@@ -22,7 +22,6 @@ __metaclass__ = type
 import smtplib
 
 from lib.popeye.config import config, p
-
 from lib.popeye.loader.loadExecSP import execQuery
 from lib.popeye.connections.db import cnDb
 
@@ -323,6 +322,6 @@ def jsonToMapping (jFile):
                     print ('"'+str(jMap[u'mapping'][col])+'":"'+(str(col))+'",')
 #### Private function  #####################################################
 connUrl = "DRIVER={SQL Server};SERVER=zion-sql5,1433;DATABASE=BZ_DWH_Expenses;UID=bpmk;PWD=bpmk;"
-# jasonFile = os.path.join("C:\\bitBucket\\mapper\\schema\\bnz\\aut", 'tests.json')
+# jasonFile = os.path.join("C:\\bitBucket\\mapper\\schema\\schemaBnz\\aut", 'tests.json')
 # jsonToMapping (jasonFile)
 # tableToStt ("AFS_Y_Medida", connUrl, connType='sql')

@@ -4,7 +4,8 @@
 # packages, not optional ones, and with the widest range of versions that could
 # be suitable)
 
-ceODBC
+#ceodbc - download from gitHub : https://github.com/anthony-tuininga/ceODBC and exec setup.py build
+#Microsoft.AnalysisServices.DLL For using SSAS processing
 pyodbc
 pymysql
 vertica_python
@@ -12,3 +13,5 @@ cx_Oracle
 pymongo
 
 sqlparse
+clr
+pandas

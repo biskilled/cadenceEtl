@@ -28,7 +28,7 @@ from collections import OrderedDict
 from lib.popeye.connections.db import cnDb
 from lib.popeye.config import config, p
 
-sys.setdefaultencoding(config.FILE_ENCODING)
+#sys.setdefaultencoding(config.FILE_ENCODING)
 
 # replace paramters will change from sp regex expression
 # sql server match = @[Paramter] = values

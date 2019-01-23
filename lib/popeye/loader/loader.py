@@ -256,7 +256,7 @@ def loading (sourceList=None, destList=None):
     processList = []
 
     for index, js in enumerate(jsonFiles):
-        with open(os.path.join(config.DIR_DATA, js)) as jsonFile:
+        with open(os.path.join(config.DIR_DATA, js), encoding="utf-8") as jsonFile:
             jText = json.load(jsonFile, object_pairs_hook=OrderedDict)
 
         processList = list([])

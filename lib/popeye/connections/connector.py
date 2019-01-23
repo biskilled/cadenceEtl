@@ -16,6 +16,10 @@
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
 from lib.popeye.config import config, p
+from lib.popeye.glob.loaderFunctions import *
+
+from lib.popeye.connections.db     import cnDb
+from lib.popeye.connections.file   import cnFile
 
 
 class connector ():
