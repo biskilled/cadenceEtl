@@ -1,0 +1,22 @@
+[
+  {"target": ["sql", "BZ_PROD_hrotoorgdept"],
+   "source": ["sql1", "hrotoorgdept"]
+  },
+  {"target": ["sql", "BZ_PROD_hrEmployees"],
+   "source": ["sql1", "bztest.hrEmployees"]
+  },
+  {"target": ["sql", "hrSectorByDeptnum"],
+   "source": ["sql1", "hrSectorByDeptnum"]
+  },
+  {"target": ["sql", "hrSectorByLevel"],
+   "source": ["sql1", "hrSectorByLevel"]
+  },
+  {"target": ["sql", "hrSector"],
+   "source": ["sql1", "hrSector"]
+  },
+  {"target": ["sql", "BZion_Prod_Sectors" ],
+   "query": ["sql1", [ "select id_num,sector_num,sector_name from bztest.hrEmployees E,hrsector S ",
+                          "where E.sector_num=S.sector_id and id_num<>0 and emp_id in ",
+                          "(SELECT MIN(E.emp_id) AS emp_id FROM bztest.hrEmployees E INNER JOIN hrsector S ON E.sector_num = S.sector_id GROUP BY E.id_num * 1)"]]
+  }
+]

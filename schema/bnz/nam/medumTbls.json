@@ -1,0 +1,216 @@
+[
+ {"target": ["sql", "STG_BSID"],
+  "query": ["oracle", [
+    "select BUKRS as company , KUNNR as customer, ZUONR as AssignNum, GJAHR as Fiscalyear, BELNR as AccDocNum,BUZEI as AccLineNum, BUDAT as PostDate, BLDAT as DocDate,",
+    "CPUDT as EntryDate, XBLNR as RefDocNum, BLART as DocType, MONAT as FiscalMon, BSCHL as PostKey, SHKZG as DebitCreditInd, DMBTR as AmountLocal, ",
+    "WRBTR as AmountOriginalCurr, SGTXT as ItemText, SAKNR as GLNum, HKONT as GLAccount, ZFBDT as BaseDate,ZTERM as TermsPayKey, ZLSCH as PayMethod, REBZG as InvoiceRel,",
+    "MADAT as LastDun, MANST as DunLevel,XZAHL as PayKey, VBELN as InvoiceNum, DMBE2 as Amount2, XREF2 as Refer2, XREF3 as Deposit, FALAR as CaseType, ",
+    "ZZCLASS as Class, ZZPATCLASS as PatType, ZZBWART as MoveTypeIn, ZTODKZ as PatDecFlg,FOREI as ConfidentialCaseFlg, ZNPOPGROUP_NOZZ as AgreemGroup, TODKZ as PatDec2, ZBWART as MoveTypeOut,",
+    "ORGFA as UnitResp, BEGDT as CaseBgDate, BWEZT as CaseEndTime, ENDDT as CaseEndDate FROM SAPR3.BSID WHERE  BUKRS = '1000' AND  KUNNR >  '0001000000' AND UMSKS = ' '"]
+  ],
+  "sttappend":{
+    "PostDate":   {"s":"BUDAT","t":"varchar(10)","f":"fDCast()"},
+    "DocDate":    {"s":"BLDAT","t":"varchar(10)","f":"fDCast()"},
+    "EntryDate":  {"s":"CPUDT","t":"varchar(10)","f":"fDCast()"},
+    "BaseDate":   {"s":"ZFBDT","t":"varchar(10)","f":"fDCast()"},
+    "CaseBgDate": {"s":"BEGDT","t":"varchar(10)","f":"fDCast()"},
+    "CaseEndTime":{"s":"BWEZT","t":"varchar(10)","f":"fTCast()"},
+    "CaseEndDate":{"s":"ENDDT","t":"varchar(10)","f":"fDCast()"},
+    "ETL_Date":   {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NAPP"],
+  "query": ["oracle", [
+    "SELECT LNRAPP as AppSqNum, FALNR as Casenum, LFDNR as MvSeqNum, DSPTY as Schtype, VISTY as VisitCatCode, BWIDT as MvBgDate, BWIZT as MvBgTime, STATU as VisitStatus,",
+    "ORGFA as OrgMed, ORGPF as OrgNurs, POBNR as PlanObjNum, PERNR as PersonNum, ZIMMR as Room, ERDAT as CreatonDate, UPDAT as UpdateDate, DAUER as NTTreatmentDuration,",
+    "STOID as CancelReason, STORN as Cancelflg, STUSR as CancelUser, STDAT as CancelDate, TMNID as AppNum, PTINP as inpSchtype ",
+    "FROM SAPR3.NAPP WHERE EINRI = '0001' AND ( erdat between '$start' and '$end' OR updat between '$start' and '$end' OR stdat between '$start' and '$end')"]
+  ],
+  "sttappend":{
+    "CreatonDate": {"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+    "UpdateDate":  {"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+    "CancelDate":  {"s":"STDAT","t":"varchar(10)","f":"fDCast()"},
+    "MvBgDate":    {"s":"BWIDT","t":"varchar(10)","f":"fDCast()"},
+    "MvBgTime":    {"s":"BWIZT","t":"varchar(10)","f":"fTCast()"},
+    "ETL_Date":    {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_N1LSSTZ"],
+  "query": ["oracle", [
+    "SELECT LNRLS AS ServSqNum, LSSTAE AS ServStatusRad, ERDAT AS CreationDate, ERTIM AS CreationTime, ERUSR AS CreationUser,",
+    "GPART AS EmplResponsible FROM SAPR3.N1LSSTZ WHERE MANDT = '938'  AND EINRI = '0001' and erdat between '' and ''"]
+  ],
+  "sttappend":{
+    "CreatonDate": {"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+    "CreationTime":{"s":"ERTIM","t":"varchar(10)","f":"fTCast()"},
+    "ETL_Date":    {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NCIR"],
+  "query": ["oracle", [
+    "SELECT FALNR as CaseNum, LFDNR as InsRelSqNum, KOSTR as InsProv, PATKZ as SelfPayerFlg, RANGF as InsProvRank,VERNR as PatInsNum, SZDEB as SelfPayerFinNum,",
+    "ABREE as AltInvFlg,KZTXT as Comment, ERDAT as CreationDate,UPDAT as UpdateDate, STORN as CancelFlg, STDAT as CancelDate,PATNR as Patnum, VERAB as InsurFrom, VERBI as InsurTo ",
+    "FROM SAPR3.NCIR WHERE EINRI = '0001' AND STORN!='X' AND erdat between '$start' AND '$end'"]
+  ],
+  "sttappend":{
+    "CreatonDate": {"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+    "UpdateDate":{"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+    "CancelDate":{"s":"STDAT","t":"varchar(10)","f":"fDCast()"},
+    "InsurFrom":{"s":"VERAB","t":"varchar(10)","f":"fDCast()"},
+    "InsurTo":{"s":"VERBI","t":"varchar(10)","f":"fDCast()"},
+    "InsProv":{"s":"KOSTR","f":"fR('X','99')"},
+    "ETL_Date":    {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NDIA"],
+  "query": ["oracle", [
+    "SELECT FALNR AS CaseNum, LFDNR AS IntDiagSqNum, LFDBEW AS IntMvSqNum, DKAT1 AS DiagCatNum1, DKEY1 AS DiagCode1, DKAT2 AS DiagCatNum2,",
+    "DKEY2 AS DiagCode2, DKAT_REF AS DiagCatNum3, DKEY_REF AS DiagCode3, DITXT AS DiagFreeText, DILTX AS LongTextFlg, DIADT AS DiagCreatDate,",
+    "DIAPE AS DiagPerson, ANZOP AS IntDiagOprNum, EWDIA AS DiagHafnaiaFlg, BHDIA AS DiagTipulFlg, AFDIA AS DiagAdmFlg, ENDIA AS DiagDischFlg, ",
+    "FHDIA AS DiagMainDepFlg, KHDIA AS DiagMainHospFlg, OPDIA AS DiagOprFlg, SPERR AS DiagBlckFlg, KZTXT AS DiagComment, LGTXT AS DiagLongTextFlg,",
+    "ERDAT AS CreatDate, ERTIM AS CreatTime, ERUSR AS CreacPerson, UPDAT AS UpdateDate, UPUSR AS UpdatePerson, STORN AS CancelFlg,",
+    "STUSR AS CancelPerson, STDAT AS CancelDate, ARDIA AS WorkDiaFlg, PODIA AS ProperativeDiaFlg, TUDIA AS DeathCauseFlg, DIABZ AS DiaRef,",
+    "DIAPR AS DiagSecondaryFlg, DIALO AS LocalizationDia,DRG_DIA_SEQNO AS IntDrgDiaSqNm, DRG_CATEGORY AS DrgCategory ",
+    "FROM SAPR3.NDIA WHERE EINRI = '0001' AND STORN!= 'X' AND ( erdat between '$start' AND '$end' OR updat between '$start' AND '$end' OR stdat between '$start' AND '$end')"]
+  ],
+  "sttappend":{
+    "DiagCreatDate":{"s":"DIADT","t":"varchar(10)","f":"fDCast()"},
+    "CreatonDate":  {"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+    "CreatTime":    {"s":"ERTIM","t":"varchar(10)","f":"fTCast()"},
+    "UpdateDate":   {"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+    "CancelDate":   {"s":"STDAT","t":"varchar(10)","f":"fDCast()"},
+    "ETL_Date":    {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NDOC"],
+  "query": ["oracle", [
+    "SELECT DOKAR AS DocType, DOKNR AS DocNum, DOKVR AS DocVer, DOKTL AS DocPart, LFDDOK AS IntDocSqNum, ORGFORM AS OrgForm, PATNR AS PatNum, FALNR AS Casenum,",
+    "FALAR AS CaseType, ORGFA AS OrgMed, ORGPF AS OrgNurs, ORGLE AS OrgNursExe, ORGLA AS OrgNursReq, ANFID AS IntReqNum, ",
+    "ORGDO AS OrgNursDoc, LEIST AS ServCode, LNRLS AS ServSqNum, LFDBEW AS IntMvSqNum, MITARB AS EmpCode, STORN AS CancelFlg,",
+    "STDAT AS CancelDate, DTID AS DocCatID, DTVERS AS IntDocVerNum, BEZEB AS DocRevLvl, MEDOK AS DocMedFlg, DODAT AS DocDate, DOTIM AS DocTime,",
+    "ERDAT AS CreationDate, UPDAT AS UpdateDate, LOEKZ AS DeleteFlg, LODAT AS DeleteDate  ",
+    "FROM SAPR3.NDOC WHERE  STORN!='X' AND  DOKAR NOT IN ('XR1','XR2','XR3','XR4','XR5','XR6','XR7') AND erdat between '$start' AND '$end'"]
+  ],
+  "sttappend":{
+    "CreationDate": {"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+    "UpdateDate":   {"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+    "CancelDate":   {"s":"STDAT","t":"varchar(10)","f":"fDCast()"},
+    "DocDate":      {"s":"DODAT","t":"varchar(10)","f":"fDCast()"},
+    "DocTime":      {"s":"DOTIM","t":"varchar(10)","f":"fTCast()"},
+    "DeleteDate":   {"s":"LODAT","t":"varchar(10)","f":"fTCast()"},
+    "ETL_Date":    {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NLKZ"],
+  "query": ["oracle", ["select LNRLS AS ServSeqNum, BELNR AS DocIVNum, POSNR AS INTDocIvItemSeqNum, FALNR AS Casenum FROM SAPR3.NLKZ"]],
+  "sttappend":{
+    "ETL_Date":    {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NKSP"],
+  "query": ["oracle", [
+    "select BELNR as IVDocNum, POSNR as IVDocItemSeqNum, TARID as ServCatNum, LEIID as ServCodeNum, KOSTR as InsurProv, LFDNR as InsRelationSeqNum,",
+    "BEGDT as ValidBgDate, ENDDT as ValidEndDate, UEBAB as RejectedIVFlg, STORN as CancelIVFlg, STDAT as CancelIVDate, UPDAT as UpdateIVDate, SEKZ as SelfPayerInd,",
+    "ZZCLASS as HospKerenFlg, ZZCLASS_CALC as HospKerCalc FROM SAPR3.NKSP WHERE STORN!='X' "]
+  ],
+  "sttappend":{
+    "ValidBgDate": {"s":"BEGDT","t":"varchar(10)","f":"fDCast()"},
+    "ValidEndDate":{"s":"ENDDT","t":"varchar(10)","f":"fDCast()"},
+    "UpdateDate":  {"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+    "CancelDate":  {"s":"STDAT","t":"varchar(10)","f":"fDCast()"},
+    "InsurProv":   {"s":"KOSTR","f":"fR('X','99')"},
+    "ETL_Date":    {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NKSK"],
+  "query": ["oracle", [
+  "select BELNR as ivdocnum,  KSTYP as ivcategory,  KSART as ivtype,  KSTYI as ivintcat,FALNR as casenum, LFDNR as seqnuminsur,",
+   "BSTAT as ivstatus, ERSDT as DocCreatDate, ERDAT as CreationDate, ERUSR as CreationUser, STORN as CancelFlg,  STUSR as CancelUser,",
+   "STDAT as CancelDate,  UPDAT as UpdateDate,  UPUSR as UpdateUser,ABGDT as Completedate, BEGDT as ivStartDate, ENDDT as ivEndDate, UEBAB as IVRejectFlg ",
+   "FROM SAPR3.NKSK WHERE STORN !='X'"]
+  ],
+  "sttappend":{
+    "CreationDate": {"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+    "UpdateDate":   {"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+    "DocCreatDate": {"s":"ERSDT","t":"varchar(10)","f":"fDCast()"},
+    "Completedate": {"s":"ABGDT","t":"varchar(10)","f":"fDCast()"},
+    "ivStartDate":  {"s":"BEGDT","t":"varchar(10)","f":"fDCast()"},
+    "ivEndDate":    {"s":"ENDDT","t":"varchar(10)","f":"fDCast()"},
+    "ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NTPZ"],
+  "query": ["oracle", ["SELECT ZOTYP AS ServRelType, TARIF AS CatNum, TALST AS ServCode, ZUTAR AS CatNumRel, ZULST AS ServCodeRel, ENDDT AS ValidToDate,",
+                        "BEGDT AS ValidFromDate, UPDAT AS UpdateDate, LOEKZ AS DeleteFlg, LODAT AS DeleteDate, ERDAT AS CreationDate ",
+                        "FROM SAPR3.NTPZ WHERE EINRI = '0001'"]],
+  "sttappend":{
+	"ValidToDate":{"s":"ENDDT","t":"varchar(10)","f":"fDCast()"},
+	"ValidFromDate":{"s":"BEGDT","t":"varchar(10)","f":"fDCast()"},
+	"UpdateDate":{"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+	"DeleteDate":{"s":"LODAT","t":"varchar(10)","f":"fDCast()"},
+	"CreationDate":{"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+    "ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NGEB"],
+  "query": ["oracle", ["SELECT FALN1 AS CaseNumMother, LFDNR AS LeidaSeqNum, FALN2 AS CaseNumBaby, GBDAT AS BirthDate, GBTIM AS BirthTime,",
+                       "GSCHL AS SexCode, GBGEW AS BirthWeight, KZTOT AS DeathBirthFlg, MEHRL AS MultBirthFlg, STORN AS CancelFlg, ",
+                       "ERDAT AS CreationDate, UPDAT AS UpdateDate FROM SAPR3.NGEB"]],
+	"sttappend":{
+	    "BirthDate":{"s":"GBDAT","t":"date","f":"fDCast()"},
+		"BirthTime":{"s":"GBTIM","t":"varchar(10)","f":"fTCast()"},
+		"CreationDate":{"s":"ERDAT","t":"date","f":"fDCast()"},
+		"UpdateDate":{"s":"UPDAT","t":"date","f":"fDCast()"},
+		"ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NPER"],
+  "query": ["oracle", "SELECT PERNR AS PersonCode, EXPNR AS PersonIDNum, ARZT AS DocFlg, PFLEG AS NursFlg, LOEKZ AS DeleteFlg, LODAT AS DeleteDate FROM SAPR3.NPER"],
+	"sttappend":{
+		"DeleteDate":{"s":"LODAT","t":"varchar(10)","f":"fDCast()"},
+		"ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NFPZ"],
+  "query": ["oracle", ["SELECT FALNR as Casenum, PERNR as PersonCode, LFDNR as PerSqNum, LFDBW as MvSqNum, BEGDT as ValidFrom, ENDDT as ValidTo,",
+                      "ERDAT as CreationDate, UPDAT as Updatedate, STORN AS DeleteFlg FROM SAPR3.NFPZ WHERE STORN!='X'"]],
+	"sttappend":{
+	    "ValidFrom":{"s":"BEGDT","t":"varchar(10)","f":"fDCast()"},
+		"ValidTo":{"s":"ENDDT","t":"varchar(10)","f":"fDCast()"},
+		"CreationDate":{"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+		"Updatedate":{"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+		"ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_NICP"],
+  "query": ["oracle", ["SELECT LNRIC as SPSeqNum, LFDBEW as MvSeqNum, ICPMK as SPCatcode, ICPML as SPCode, ICPHC as MainSPFlg, LSLOK as LocalProc,",
+                       "IDENT as IdentExtSys, OPART as SurgeryType, UPDAT as Updatedate, STORN as CancelFlg, STDAT as CancelDate, FALNR as CaseNum,",
+                       "BTEXT as ProcComment, OBJCT as Objct FROM SAPR3.NICP WHERE STORN!='X'"]],
+	"sttappend":{
+		"Updatedate":{"s":"UPDAT","t":"varchar(10)","f":"fDCast()"},
+		"CancelDate":{"s":"STDAT","t":"varchar(10)","f":"fDCast()"},
+		"ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_ZISH_MED_TYPE"],
+  "query": ["oracle", ["SELECT FALNR AS CaseNum,SEQNR AS MSSeqNum, MEDST AS MedicalStatus,BEGDT AS MSBeginDate, BEGTM AS MSBeginTime,PERNR AS PerfEmp,",
+                    "ENDDT AS MSEndDate, ENDTM AS MSEndTime, DISNR AS DismisEmp,ERDAT AS CreationDate, ERTIM AS CreationTime, ERUSR AS CreationUser, ",
+                    "ZDELFLAG AS CancelFlg, N1STOTX AS CancelReason, LOUSR AS CancelUser ",
+                    "FROM SAPR3.ZISH_MED_TYPE WHERE MANDT = '938' AND EINRI = '0001' AND ZDELFLAG!='X'"]],
+	"sttappend":{
+		"MSBeginDate":{"s":"BEGDT","t":"varchar(10)","f":"fDCast()"},
+		"MSBeginTime":{"s":"BEGTM","t":"varchar(10)","f":"fTCast()"},
+		"MSEndDate":{"s":"ENDDT","t":"varchar(10)","f":"fDCast()"},
+		"MSEndTime":{"s":"ENDTM","t":"varchar(10)","f":"fTCast()"},
+		"CreationDate":{"s":"ERDAT","t":"varchar(10)","f":"fDCast()"},
+		"CreationTime":{"s":"ERTIM","t":"varchar(10)","f":"fTCast()"},
+		"ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  },
+  {"target": ["sql", "STG_ZISH_MED_STATUST"],
+  "query": ["oracle", "SELECT MEDST as MedicalStatusCode, SPRAS as lengKey, DESCR as MSDesc, SHDSC as MSShort FROM SAPR3.ZISH_MED_STATUST WHERE MANDT = '938' and SPRAS = 'B'"],
+	"sttappend":{
+		"ETL_Date":     {"t":"date","f":"fDCurr()"}
+    }
+  }
+]

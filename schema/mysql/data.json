@@ -1,0 +1,8 @@
+[
+    {
+        "source": ["sql","historical_status_trials"],
+        "target": ["sql","historical_status_trials1"],
+        "merge":["DWH_historical_status_trials",["type_of_user","subscription_id"]],
+        "seq":{"column":"startSeq", "type":"int", "start":10, "inc":1}
+	}
+]

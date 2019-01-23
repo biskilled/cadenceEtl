@@ -1,0 +1,21 @@
+[
+  {
+    "target": ["sql","AAA_LOG_ERR"],
+    "stt":{
+      "updateDate":{"t":"smalldatetime"},
+      "startDate":{"t":"smalldatetime"},
+      "logType":{"t":"nvarchar(10)"},
+      "dDesc":{"t":"nvarchar(max)"}
+    }
+  },
+  {
+    "target": ["sql","AAA_LOG_INFO"],
+    "stt":{
+      "updateDate":{"t":"smalldatetime"},
+      "startDate":{"t":"smalldatetime"},
+      "logType":{"t":"nvarchar(10)"},
+      "dDesc":{"t":"nvarchar(max)"}
+    }
+  }
+
+]
