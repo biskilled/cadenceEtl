@@ -4,8 +4,8 @@ from lib.popeye.config import config
 config.CONNECTIONS_ACTIVE = {"sql": "cnDb"}
 import lib.popeye.mapp.mapper as mapper
 
-config.CONN_URL   = {'sql' : "DRIVER={SQL Server};SERVER=SRV-BI,1433;DATABASE=BZ_AUT;UID=bpmk;PWD=bpmk;",
-                     'sqlRepo': "DRIVER={SQL Server};SERVER=SRV-BI,1433;DATABASE=BZ_AUT;UID=bpmk;PWD=bpmk;"}
+config.CONN_URL   = {'sql' : "DRIVER={SQL Server};SERVER=XXXXX;DATABASE=YOYOYO;UID=YOYOYO;PWD=YOYOYO;",
+                     'sqlRepo': "DRIVER={SQL Server};SERVER=XXXXX,1433;DATABASE=YOYOYO;UID=YOYOYO;PWD=YOYOYO;"}
 
 config.DIR_DATA     =  "./"
 
