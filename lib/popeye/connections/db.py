@@ -87,8 +87,8 @@ class cnDb (object):
             self.cType = 'vertica'
         elif 'oracle' in conType.lower():
             self.conn = cx_Oracle.connect(self.cUrl['user'], self.cUrl['pass'], self.cUrl['dsn'])
-            if 'nls' in self.cUrl:
-                os.environ["NLS_LANG"] = self.cUrl['nls']
+            #if 'nls' in self.cUrl:
+            #    os.environ["NLS_LANG"] = self.cUrl['nls']
             self.cursor = self.conn.cursor()
             self.cType = 'oracle'
         elif 'access' in conType.lower():
@@ -534,7 +534,7 @@ class cnDb (object):
             return True
         except  Exception as e:
             p("db->__executeSQL: ERROR : ")
-            p(u"db->__executeSQL: ERROR \n: %s " % str(e,'utf-8'), "e")
+            p(u"db->__executeSQL: ERROR \n: %s " % e, "e")
             p ("db->__executeSQL: ERROR SQL: %s " %(sql),"e" )
             return False
 
@@ -643,6 +643,7 @@ class cnDb (object):
             # sqlQ                = sqlQ.replace ("'",'"')
             columnTblDic        = queryParser.extract_tableAndColumns(sqlQ)
 
+
             allColumnsList      = [x for x in columnTblDic[config.QUERY_ALL_COLUMNS_KEY]]
             allColumnsTarget    = [x for x in columnTblDic[config.QUERY_TARGET_COLUMNS]]
             alldistinctColumn   = []
@@ -655,17 +656,17 @@ class cnDb (object):
 
             # update allTableStrucure dictionary : {tblName:{col name : ([original col name] , [tbl name] , [col structure])}}
             for tbl in columnTblDic:
-                if tbl not in config.QUERY_ALL_COLUMNS_KEY:
+                if tbl not in config.QUERY_ALL_COLUMNS_KEY and tbl not in config.QUERY_TARGET_COLUMNS:
                     fullTableName                   = tbl
                     allTableStrucure[tbl.lower()]   = {}
                     if 'schema' in columnTblDic[tbl] and columnTblDic[tbl]['schema'] and len (columnTblDic[tbl]['schema'])>0:
                         fullTableName = columnTblDic[tbl]['schema']+"."+tbl
 
-                    sql = getattr(queries, self.cType + "_columnDefinition")(fullTableName)
-                    self.__executeSQL(str (sql), commit=False )
 
+                    sql = getattr(queries, self.cType + "_columnDefinition")(fullTableName)
+                    self.__executeSQL(sql, commit=False )
                     for row in self.cursor.fetchall():
-                        allTableStrucure[tbl.lower()][row[0].lower()] = ( unicode (row[0]), unicode(tbl),  unicode (row[1].lower().strip().replace(' ', '')) )
+                        allTableStrucure[tbl.lower()][row[0].lower()] = ( row[0], tbl,  row[1].lower().strip().replace(' ', '') )
 
             # Create source mapping -> tableStructure
             # update mappingDic if there is column mapping
@@ -674,11 +675,11 @@ class cnDb (object):
                 targetName = allColumnsTarget[i]
                 colType, colTbl, colName = self.__sqlQueryMappingHelp (allTableStrucure, col[1])
                 if colName:
-                    fullColName = unicode(colName + u"_" + colTbl) if alldistinctColumn.count(colName) > 1 else unicode(colName)
+                    fullColName = colName + u"_" + colTbl if alldistinctColumn.count(colName) > 1 else colName
                     if len(col[0])>0:
                         fullColName = col[0]+"."+fullColName
                         colName = col[0]+"."+colName
-                    tableStructure.append((unicode(fullColName), colType))
+                    tableStructure.append((fullColName, colType))
                     # update stt dictionary, if there is a mapping frorm query
                     sttTemp[targetName] = {"s":colName,"t":colType}
 
@@ -693,7 +694,7 @@ class cnDb (object):
                                 colType = allTableStrucure[tblName][colTup][2]
                                 fullColName = tblName+"."+colName
 
-                                tableStructure.append((unicode(fullColName), colType))
+                                tableStructure.append((fullColName, colType))
                                 sttTemp[colName] = {"s": colName, "t": colType}
 
             self.cColumns = tableStructure

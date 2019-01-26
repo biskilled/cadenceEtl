@@ -179,16 +179,14 @@ def loadJson (sourceList=None, destList=None):
         if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
 
     for index, js in enumerate(jsonFiles):
-        with open(os.path.join(config.DIR_DATA, js)) as jsonFile:
+        with open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:
             p('mapper->loadJson: mapping from file  %s >>>>>' % (js), "ii")
             jText = json.load(jsonFile , object_pairs_hook=OrderedDict)
-
             for jMap in jText:
-
                 dicProp = {}
                 sttDic  = OrderedDict()
                 dicProp['addSrcColumns'] = False
-                keys = map(lambda x:x.lower(),jMap.keys())
+                keys = [x.lower() for x in jMap.keys()]
                 # update all variables
                 sourceConn  = {'source', 'src'}.intersection(set(keys))
                 queryConn   = {'query'}.intersection(set(keys))

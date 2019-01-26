@@ -154,14 +154,14 @@ def setQueryWithParams(query):
     if query and len (query)>0:
         if isinstance(query, (list,tuple)):
             for q in query:
-                q = str(q.encode('utf8'))
+                #q = str(q, 'utf-8')
                 for param in config.QUERY_PARAMS:
                     if param in q:
                         q = q.replace(param, config.QUERY_PARAMS[param])
                         p("config->setQueryWithParams: replace param %s with value %s, sql: %s " % (str(param), str(config.QUERY_PARAMS[param]), str (q)), "ii")
                 qRet += q
         else:
-            query= str (query.encode('utf8'))
+            #query= str (query, 'utf-8')
 
             for param in config.QUERY_PARAMS:
                 if param in query:

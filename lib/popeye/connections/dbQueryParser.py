@@ -58,7 +58,6 @@ def extract_select_part (parsed):
     addToken = False
 
     for item in parsed.tokens:
-        # print "TAL"
         # print item.value + "  ;  " +str (item.ttype)
         if item.ttype is DML and item.value.upper() == 'SELECT':
             addToken = True
@@ -170,9 +169,9 @@ def extract_tableAndColumns (sql):
 
 
         for col in columns:
-            if unicode(col) in [tableName,alias]:
+            if str(col) in [tableName,alias]:
                 ret[tableName]['column'].extend  (columns[col])
-            if unicode(col) == config.QUERY_COLUMNS_KEY:
+            if str(col) == config.QUERY_COLUMNS_KEY:
                 ret[tableName]['column'].extend (columns[col])
 
     return ret
