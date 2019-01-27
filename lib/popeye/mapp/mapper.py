@@ -108,71 +108,74 @@ def mapper (dicProp):
     toCreate    = []
 
     #update parmaters
-    isMerge         = dicProp['merge'] if 'merge'   in prop else None
-    stt             = dicProp['stt']  if 'stt'      in prop else None
-    seq             = checkSequence (dicProp['seq']) if 'seq' in prop else None
-    isTarget        = dicProp['target'] if 'target' in  prop else None
-    isSource        = dicProp['source'] if 'source' in  prop else None
+    isMerge         = dicProp['merge'] if 'merge'               in prop else None
+    stt             = dicProp['stt']  if 'stt'                  in prop else None
+    seq             = checkSequence (dicProp['seq']) if 'seq'   in prop else None
+    isTarget        = dicProp['target'] if 'target'             in  prop else None
+    isSource        = dicProp['source'] if 'source'             in  prop else None
     addSourceColumn = dicProp['addSrcColumns'] if 'addSrcColumns' in prop else False
 
-    if isTarget:
-        if isSource:
-            stt = isSource.structure(stt=stt,addSourceColumn=addSourceColumn)
-            srcColumns = isSource.getColumns()
-
-            # convert source data type to target data types
-            srcColumns      = sourceToTargetDataTypes(isSource.cType, isTarget.cType, srcColumns)
-            srcColumnNames  = [c[0].strip() for c in srcColumns]
-
-            updColumns      = []
-            if srcColumns and len (srcColumns)>0:
-                # there is target, source and mapping Will map field based on source and create table
-                if stt and len(stt)>0:
-                    srcC = [stt[k]["s"] for k in stt if "s" in stt[k]]
-
-                    # check if all mapping exist in source as well
-                    for col in srcC:
-                        if col not in srcColumnNames:
-                            #print srcColumnNames
-                            colTodel = [k for k in stt if "s" in stt[k] and stt[k]["s"]==col]
-                            p ('mapper->mapper: There is Targets %s which is mapped to %s, but source not exists, ignoring targets column %s ....' %(str(colTodel), col,str(colTodel) ) ,"ii")
-                            p('mapper->mapper: SOURCE COLUMNS : '  , "ii")
-                            srcNameStr = ""
-                            for s in srcColumnNames:
-                                srcNameStr+=s+" ,"
-                            p(srcNameStr, "ii")
-                            for d in colTodel:
-                                del stt[d]
-
-                    # Update stt with new types
-                    stt = sourceToTargetDataTypes(isSource.cType, isTarget.cType, stt)
-
-                isTarget.create(stt=stt, seq=seq)
-                if isMerge: isMerge.create(stt=stt, seq=seq)
-            else:
-                p ("mapper->mapper: Source %s is not exists, will not create target table >>>>>>>>>>" %str(isSource.cName),"e")
-        # there is only target
-        elif stt:
-            for t in stt:
-                if "t" not in stt[t]:
-                    p('mapper->mapper: There is Target mapping without Source, there is NO TYPE for column %s, ignoring column, values is %s ....' % (str(t), str(stt[t])), "ii")
-                    del stt[t]
-                if "s" not in stt[t]:
-                    stt[t]["s"]=t
-            isTarget.create(stt=stt, seq=seq)
-        elif isMerge:
-            stt = isTarget.structure(stt=stt, addSourceColumn=addSourceColumn)
-            isMerge.create (stt=stt,seq=seq)
-    else:
+    # There is Target mapping
+    if not isTarget:
         p("mapper->mapper: Target is not exists, What the hell quittttitnnggggg.... >>>>>>>>>>", "i")
+        return
+
+    # There is direct source
+    if isSource:
+        stt         = isSource.structure(stt=stt,addSourceColumn=addSourceColumn)
+        srcColumns  = isSource.getColumns()
+
+        # convert source data type to target data types
+        srcColumns      = sourceToTargetDataTypes(isSource.cType, isTarget.cType, srcColumns)
+        srcColumnNames  = [c[0].strip() for c in srcColumns]
+
+        updColumns      = []
+        if srcColumns and len (srcColumns)>0:
+            # there is target, source and mapping Will map field based on source and create table
+            if stt and len(stt)>0:
+                srcC = [stt[k]["s"] for k in stt if "s" in stt[k]]
+
+                # check if all mapping exist in source as well
+                for col in srcC:
+                    if col not in srcColumnNames:
+                        #print srcColumnNames
+                        colTodel = [k for k in stt if "s" in stt[k] and stt[k]["s"]==col]
+                        p ('mapper->mapper: There is Targets %s which is mapped to %s, but source not exists, ignoring targets column %s ....' %(str(colTodel), col,str(colTodel) ) ,"ii")
+                        p('mapper->mapper: SOURCE COLUMNS : '  , "ii")
+                        srcNameStr = ""
+                        for s in srcColumnNames:
+                            srcNameStr+=s+" ,"
+                        p(srcNameStr, "ii")
+                        for d in colTodel:
+                            del stt[d]
+
+                # Update stt with new types
+                stt = sourceToTargetDataTypes(isSource.cType, isTarget.cType, stt)
+
+            isTarget.create(stt=stt, seq=seq)
+            if isMerge: isMerge.create(stt=stt, seq=seq)
+        else:
+            p ("mapper->mapper: Source %s is not exists, will not create target table >>>>>>>>>>" %str(isSource.cName),"e")
+    # there is only target
+    elif stt:
+        for t in stt:
+            if "t" not in stt[t]:
+                p('mapper->mapper: There is Target mapping without Source, there is NO TYPE for column %s, ignoring column, values is %s ....' % (str(t), str(stt[t])), "ii")
+                del stt[t]
+            if "s" not in stt[t]:
+                stt[t]["s"]=t
+        isTarget.create(stt=stt, seq=seq)
+    elif isMerge:
+        stt = isTarget.structure(stt=stt, addSourceColumn=addSourceColumn)
+        isMerge.create (stt=stt,seq=seq)
 
 # Main function : loading all json file and parse them by definition
 def loadJson (sourceList=None, destList=None):
     p('mapper->loadJson: START MAPPING >>>>> data from Folder %s ...' % (config.DIR_DATA), "i")
-    toLoad  = True
-    isSource= False
-    isTarget= False
-    sttDic = OrderedDict()
+    toLoad      = True
+    isSource    = False
+    isTarget    = False
+    sttDic      = OrderedDict()
 
     jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
     for f in list (jsonFiles):
