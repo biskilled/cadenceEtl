@@ -20,6 +20,7 @@ __metaclass__ = type
 
 
 import smtplib
+import re
 
 from lib.popeye.config import config, p
 from lib.popeye.loader.loadExecSP import execQuery
@@ -134,13 +135,6 @@ def sendSMTPMsg(timeTuple,jobName, onlyErr = True):
 
         sendMsg(subj, text=None, mHTML=htmlDic)
 
-# TESTS ::::
-#config.SMTP_RECEIVERS = ['Oren.Muslavi@b-zion.org.il' , 'tal@bpmk.co.il'] # ['Oren.Muslavi@b-zion.org.il']  # ['tal@bpmk.co.il'] # Oren.Muslavi@b-zion.org.il
-#subj = "Hallo world 1234"
-#msg  = "Testing hallo world 123445"
-#msgHTML = None # {"1":"Test123234", "2": "fdfdfdfdfdfdffd","tertttt":"123456578"}
-#sendMsg(subj,msg, mHTML=msgHTML)
-
 def preLogsInDB ():
     querySteps = []
     connType   = None
@@ -218,9 +212,9 @@ def logsToDb (js=None):
 
 def OLAP_Process(serverName,dbName, cubes=[], dims=[], fullProcess=True):
     import sys
-    sys.path.append(r'C:\Users\bpm\Downloads\python\modules\dist\pythonnet-2.3.0\src\clrmodule\bin\clrmodule.dll')
+    sys.path.append(r'../3rdPart/clrmodule.dll')
     import clr
-    clr.AddReference(r"C:\bi\SQL2016\x86\140\SDK\Assemblies\Microsoft.AnalysisServices.DLL")
+    clr.AddReference(r"../3rdPart/Microsoft.AnalysisServices.DLL")
 
     from Microsoft.AnalysisServices import Server
     from Microsoft.AnalysisServices import ProcessType
@@ -240,7 +234,7 @@ def OLAP_Process(serverName,dbName, cubes=[], dims=[], fullProcess=True):
                 p(u"gFunc->OLAP_Process, OLAP DB: %s, process DIM %s finish succeffully ... " %(unicode(dbName), unicode(str(dim).decode('windows-1255'))), "i")
             except Exception as e:
                 p(u"gFunc->OLAP_Process, OLAP DB: %s, ERROR processing DIM %s ... " % (unicode(dbName),unicode(str(dim).decode('windows-1255'))),"e")
-                p(unicode(e),"e")
+                p(e,"e")
 
     for cube in amoDb.Cubes:
         if len(cubes)==0 or cube in cubes:
@@ -249,10 +243,7 @@ def OLAP_Process(serverName,dbName, cubes=[], dims=[], fullProcess=True):
                 p(u"gFunc->OLAP_Process, OLAP DB: %s, CUBE %s finish succeffully ... " %(unicode(dbName),unicode(str(cube).decode('windows-1255'))),"i")
             except Exception as e:
                 p(u"gFunc->OLAP_Process, OLAP DB: %s, ERROR processing CUBE %s ... " % (unicode(dbName),unicode(str(cube).decode('windows-1255'))),"e")
-                p(unicode(e),"e")
-
-
-# OLAP_Process(serverName='SRV-BI',dbName='aut', cubes=[], dims=[], fullProcess=True)
+                p(e,"e")
 
 #### GENERAL FUNCTIONS #####################################################
 
@@ -321,7 +312,3 @@ def jsonToMapping (jFile):
                 for col in jMap[u'mapping']:
                     print ('"'+str(jMap[u'mapping'][col])+'":"'+(str(col))+'",')
 #### Private function  #####################################################
-connUrl = "DRIVER={SQL Server};SERVER=zion-sql5,1433;DATABASE=BZ_DWH_Expenses;UID=bpmk;PWD=bpmk;"
-# jasonFile = os.path.join("C:\\bitBucket\\mapper\\schema\\schemaBnz\\aut", 'tests.json')
-# jsonToMapping (jasonFile)
-# tableToStt ("AFS_Y_Medida", connUrl, connType='sql')

@@ -22,10 +22,11 @@ import re
 from collections import OrderedDict
 import multiprocessing.pool as mpool
 
-from lib.popeye.config  import config, p, setQueryWithParams
+from lib.popeye.config  import config, p, setQueryWithParams, replaceStr
 import lib.popeye.connections.dbQueries as queries
 import lib.popeye.connections.dbQueryParser as queryParser
 from  lib.popeye.glob.globalFunctions import *
+
 
 
 aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]
@@ -102,10 +103,10 @@ class cnDb (object):
             self.cType =  'sql'
 
         if not self.cIsSql:
-            self.cSchema= self.cName[:self.cName.find(".")] if self.cName.find(".") > 0 else config.DATA_TYPE['schema'][self.cType]
-            self.cName  = self.cName[self.cName.find(".") + 1:] if self.cName.find(".") > 0 else self.cName
-            if self.cSchema:  self.cSchema.replace("[", "").replace("]", "")
-            if self.cName:    self.cName.replace("[", "").replace("]", "")
+            self.cSchema    = self.cName[:self.cName.find(".")] if self.cName.find(".") > 0 else config.DATA_TYPE['schema'][self.cType]
+            self.cName      = self.cName[self.cName.find(".") + 1:] if self.cName.find(".") > 0 else self.cName
+            if self.cSchema:  self.cSchema.replace(config.DATA_TYPE['colFrame'][self.cType][0], "").replace(config.DATA_TYPE['colFrame'][self.cType][1], "")
+            if self.cName:    self.cName.replace(config.DATA_TYPE['colFrame'][self.cType][0], "").replace(config.DATA_TYPE['colFrame'][self.cType][1], "")
 
             if self.cWhere and len (self.cWhere)>1:
                 self.cWhere = re.sub (r'WHERE', '', self.cWhere, flags=re.IGNORECASE)
@@ -150,7 +151,9 @@ class cnDb (object):
         return
 
     def create(self, stt=None,  seq=None, tblName=None):
-        tblName = tblName if tblName else "[" + self.cSchema + "].[" + self.cName+"]" if self.cSchema else "["+self.cName+"]"
+        prePos, postPos = config.DATA_TYPE['colFrame'][self.cType]
+
+        tblName = tblName if tblName else prePos + self.cSchema + postPos+"."+prePos + self.cName+postPos if self.cSchema else prePos+self.cName+postPos
         colList = [(t,stt[t]["t"]) for t in stt if "t" in stt[t]] if stt else self.getColumns()
 
         if colList and len (colList)>0:
@@ -161,13 +164,13 @@ class cnDb (object):
             if boolToCreate:
                 sql = "CREATE TABLE "+tblName+" \n"
                 if seq:
-                    colSeqName = seq['column'].replace("[","").replace("]","")
+                    colSeqName = seq['column'].replace(prePos,"").replace(postPos,"")
                     colType    = getattr(queries, self.cType + "_seq")(seq)
-                    col += "["+colSeqName+"]"+"\t"+ colType
+                    col += prePos+colSeqName+postPos+"\t"+ colType
                 for colTup in colList:
-                    colName = colTup[0].replace("[","").replace("]","")
+                    colName = colTup[0].replace(prePos,"").replace(postPos,"")
                     if colName != colTup[1]:
-                        col += "["+colName+"]"+"\t"+ colTup[1] +",\n"
+                        col += prePos+colName+postPos+"\t"+ colTup[1] +",\n"
                 col = col[:-2]
                 col+=")"
                 sql += col
@@ -640,7 +643,8 @@ class cnDb (object):
 
         if sqlQ and len(sqlQ)>0:
             sttTemp             = OrderedDict()
-            # sqlQ                = sqlQ.replace ("'",'"')
+            preDB,postDB        = config.DATA_TYPE['colFrame'][self.cType]
+            sqlQ                = replaceStr (sString=sqlQ,findStr='CLASS', repStr=preDB+'CLASS'+postDB, ignoreCase=True)
             columnTblDic        = queryParser.extract_tableAndColumns(sqlQ)
 
 

@@ -19,6 +19,7 @@ from __future__ import  (absolute_import, division, print_function)
 __metaclass__ = type
 
 import datetime
+import re
 
 class config:
     #########################   Feild per model ##############################################
@@ -171,3 +172,11 @@ def setQueryWithParams(query):
     else:
         qRet = query
     return qRet
+
+def replaceStr (sString,findStr, repStr, ignoreCase=True):
+    if ignoreCase:
+        pattern = re.compile(re.escape(findStr), re.IGNORECASE)
+        res = pattern.sub (repStr, sString)
+    else:
+        res = sString.replace (findStr, repStr)
+    return res

@@ -49,13 +49,13 @@ def extract_from_part(parsed):
             from_seen = True
 
 def extract_select_part (parsed):
-    allColumnSign   = config.QUERY_ALL_COLUMNS_KEY
-    nonColumnSign   = config.QUERY_COLUMNS_KEY
-    targetColumnNames=config.QUERY_TARGET_COLUMNS
-    columnList = []
-    columnDic = {allColumnSign:[],targetColumnNames:[]}
-    col = None
-    addToken = False
+    allColumnSign       = config.QUERY_ALL_COLUMNS_KEY
+    nonColumnSign       = config.QUERY_COLUMNS_KEY
+    targetColumnNames   = config.QUERY_TARGET_COLUMNS
+    columnList          = []
+    columnDic           = {allColumnSign:[],targetColumnNames:[]}
+    col                 = None
+    addToken            = False
 
     for item in parsed.tokens:
         # print item.value + "  ;  " +str (item.ttype)
@@ -67,12 +67,14 @@ def extract_select_part (parsed):
             break
         else:
             if addToken:
-                dicKey = None
-                dicValue = None
+                dicKey  = None
+                dicValue= None
+
                 if isinstance(item, IdentifierList):
                     for identifier in item.get_identifiers():
                         identifier = str(identifier)
                         srcName = identifier
+
                         if identifier.lower().find(" as") > 0:
                             srcName = identifier[:identifier.lower().find(" as")].strip()
                             tarName = identifier[identifier.lower().find(" as")+3:].strip()
@@ -88,7 +90,6 @@ def extract_select_part (parsed):
                     else:
                         tarName = srcName
                     columnList.append( (srcName.split(".") , tarName) )
-
 
     for tupCol in columnList:
         col     = tupCol[0]
@@ -135,6 +136,7 @@ def extract_tables(sql):
     extracted_last_tables_Tuple = None
     extracted_last_columns_Dic = None
     statements = list(sqlparse.parse(sql))
+
     for statement in statements:
         if statement.get_type() != 'UNKNOWN':
             stream = extract_from_part(statement)
@@ -155,7 +157,6 @@ def extract_tableAndColumns (sql):
         ret[config.QUERY_TARGET_COLUMNS] = columns[config.QUERY_TARGET_COLUMNS]
     # merge table to columns
 
-
     for tbl in tblTupe:
         alias       = tbl[0]
         schamenName = tbl[1]
@@ -166,7 +167,6 @@ def extract_tableAndColumns (sql):
 
         if columns and len (columns)>0:
             ret[tableName]['column'] = []
-
 
         for col in columns:
             if str(col) in [tableName,alias]:
