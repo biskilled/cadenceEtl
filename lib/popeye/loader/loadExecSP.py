@@ -25,10 +25,13 @@ import sys
 import multiprocessing
 from collections import OrderedDict
 
-from lib.popeye.connections.db import cnDb
-from lib.popeye.config import config, p
+from lib.popeye.connections.db  import cnDb
+from lib.popeye.config          import config
+from lib.popeye.glob.glob       import p
 
-#sys.setdefaultencoding(config.FILE_ENCODING)
+if 2 == sys.version_info[0]:
+    reload(sys)
+    sys.setdefaultencoding(config.FILE_ENCODING)
 
 # replace paramters will change from sp regex expression
 # sql server match = @[Paramter] = values

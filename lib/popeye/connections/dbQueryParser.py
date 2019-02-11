@@ -16,10 +16,11 @@
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
 import sqlparse
-from sqlparse.sql import IdentifierList, Identifier
-from sqlparse.tokens import Keyword, DML
+from sqlparse.sql       import IdentifierList, Identifier
+from sqlparse.tokens    import Keyword, DML
 
-from lib.popeye.config import config, p
+from lib.popeye.config      import config
+from lib.popeye.glob.glob   import p
 
 def is_subselect(parsed):
     if not parsed.is_group:

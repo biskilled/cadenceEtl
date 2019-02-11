@@ -15,8 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
-from lib.popeye.config import config, p
+from lib.popeye.config import config
 from lib.popeye.glob.loaderFunctions import *
+from lib.popeye.glob.glob import p
 
 from lib.popeye.connections.db     import cnDb
 from lib.popeye.connections.file   import cnFile

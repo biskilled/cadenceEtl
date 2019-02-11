@@ -21,9 +21,6 @@ __metaclass__ = type
 import re
 import datetime
 
-from lib.popeye.config import config
-
-
 class fncBase ():
     def __init__(self,*args, **kargs):
         self.cDate = datetime.datetime.today().strftime('%m/%d/%y')
@@ -165,7 +162,6 @@ class fClob(fncBase):
             return None
         #if type(col) == cx_Oracle.LOB:
             #print (str(col).encode("windows-1255"))
-            #if 'סיכות' in str(col).encode("utf-8"):
             #    print "Yoooooooooooooooooooooooooooooooooo"
             #    return str(col)
             #else:

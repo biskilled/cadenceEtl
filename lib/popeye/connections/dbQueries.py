@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # (c) 2017-2019, Tal Shany <tal.shany@biSkilled.com>
 #
 # This file is part of popEye
@@ -230,7 +231,6 @@ def sql_merge (dstTable, srcTable, mergeKeys, colList , colFullList):
 
         return sql
 
-
 ######### SQL : SEQUENCE : column, type, start, leg
 def sql_seq (seqDic):
     sql = ""
@@ -241,8 +241,3 @@ def sql_seq (seqDic):
         else:
             sql = "["+seqDic['type']+"]"+"\t"+" IDENTITY("+str(seqDic['start'])+","+str(seqDic['inc'])+") NOT NULL,\n"
     return sql
-
-
-
-
-

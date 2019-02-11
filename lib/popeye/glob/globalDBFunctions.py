@@ -21,8 +21,10 @@ __metaclass__ = type
 
 import smtplib
 import re
+import sys
 
-from lib.popeye.config import config, p
+from lib.popeye.config import config
+from lib.popeye.glob.glob import p
 from lib.popeye.loader.loadExecSP import execQuery
 from lib.popeye.connections.db import cnDb
 
@@ -147,9 +149,9 @@ def preLogsInDB ():
 
         sql = """
             Delete from ["""+config.LOGS_TBL_COUNT+""""] where not exists
-            (Select 1 from 
-                (Select intDate, tbl From 
-                    (Select RANK() OVER (Partition by tblDest order by uDate) rnk, uDate as intDate, tblTest as tbl from ["""+config.LOGS_TBL_COUNT+""""] 
+            (Select 1 from
+                (Select intDate, tbl From
+                    (Select RANK() OVER (Partition by tblDest order by uDate) rnk, uDate as intDate, tblTest as tbl from ["""+config.LOGS_TBL_COUNT+""""]
                      UNION
                      Select RANK() OVER (Partition by tblDest order by uDate desc) rnk, uDate as intDate, tblTest as tbl from ["""+config.LOGS_TBL_COUNT+""""] ) aa
                  Where aa.rnk=1 ) bb

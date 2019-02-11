@@ -18,43 +18,33 @@
 import time
 import sys
 import os
-import re
-from collections import OrderedDict
-import multiprocessing.pool as mpool
 
-from lib.popeye.config  import config, p, setQueryWithParams, replaceStr
+import multiprocessing.pool as mpool
+from collections import OrderedDict
+
+from lib.popeye.config import config
+from lib.popeye.glob.glob import p, setQueryWithParams, decodeStrPython2Or3
+
+# Data sources
+aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]
+if "sql" in aConnection or "access" in aConnection : import ceODBC as odbc #   ceODBC as odbc #pyodbc  # pyodbc version: 3.0.7
+#if "mysql" in aConnection   : import pymysql as pymysql
+#if "vertica" in aConnection : import vertica_python
+if "oracle" in aConnection  :
+    import cx_Oracle                      # version : 6.1
+# pip install vertica_python
+# Need to install pip install sqlalchemy-vertica-python as well !!!
+
 import lib.popeye.connections.dbQueries as queries
 import lib.popeye.connections.dbQueryParser as queryParser
-from  lib.popeye.glob.globalFunctions import *
-
-
-
-aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]
-
-if "sql" in aConnection or "access" in aConnection :
-    #import pyodbc
-    import ceODBC as odbc
-
-if "mysql" in aConnection:
-    import pymysql
-
-if "vertica" in aConnection :
-    # pip install vertica_python
-    # Need to install pip install sqlalchemy-vertica-python as well !!!
-    import vertica_python
-
-if "oracle" in aConnection  :
-    # version : 6.1
-    import cx_Oracle
-
-
+from lib.popeye.glob.loaderFunctions import *
 
 class cnDb (object):
     def __init__ (self, connObject, conType='sql', connUrl=None, isSql=False, connWhere=None):
         self.cIsSql     = isSql
         self.cName      = setQueryWithParams (connObject)
         self.cSchema    = None
-        self.cType      = conType.lower()
+        self.cType = conType.lower()
 
         if self.cIsSql:
             self.cSQL = self.cName
@@ -88,8 +78,9 @@ class cnDb (object):
             self.cType = 'vertica'
         elif 'oracle' in conType.lower():
             self.conn = cx_Oracle.connect(self.cUrl['user'], self.cUrl['pass'], self.cUrl['dsn'])
-            #if 'nls' in self.cUrl:
-            #    os.environ["NLS_LANG"] = self.cUrl['nls']
+            if 'nls' in self.cUrl:
+                os.environ["NLS_LANG"] = self.cUrl['nls']
+
             self.cursor = self.conn.cursor()
             self.cType = 'oracle'
         elif 'access' in conType.lower():
@@ -103,10 +94,10 @@ class cnDb (object):
             self.cType =  'sql'
 
         if not self.cIsSql:
-            self.cSchema    = self.cName[:self.cName.find(".")] if self.cName.find(".") > 0 else config.DATA_TYPE['schema'][self.cType]
-            self.cName      = self.cName[self.cName.find(".") + 1:] if self.cName.find(".") > 0 else self.cName
-            if self.cSchema:  self.cSchema.replace(config.DATA_TYPE['colFrame'][self.cType][0], "").replace(config.DATA_TYPE['colFrame'][self.cType][1], "")
-            if self.cName:    self.cName.replace(config.DATA_TYPE['colFrame'][self.cType][0], "").replace(config.DATA_TYPE['colFrame'][self.cType][1], "")
+            self.cSchema =self.cName[:self.cName.find(".")] if self.cName.find(".") > 0 else config.DATA_TYPE['schema'][self.cType]
+            self.cName =  self.cName[self.cName.find(".") + 1:] if self.cName.find(".") > 0 else self.cName
+            if self.cSchema:  self.cSchema.replace("[", "").replace("]", "")
+            if self.cName:    self.cName.replace("[", "").replace("]", "")
 
             if self.cWhere and len (self.cWhere)>1:
                 self.cWhere = re.sub (r'WHERE', '', self.cWhere, flags=re.IGNORECASE)
@@ -151,9 +142,7 @@ class cnDb (object):
         return
 
     def create(self, stt=None,  seq=None, tblName=None):
-        prePos, postPos = config.DATA_TYPE['colFrame'][self.cType]
-
-        tblName = tblName if tblName else prePos + self.cSchema + postPos+"."+prePos + self.cName+postPos if self.cSchema else prePos+self.cName+postPos
+        tblName = tblName if tblName else "[" + self.cSchema + "].[" + self.cName+"]" if self.cSchema else "["+self.cName+"]"
         colList = [(t,stt[t]["t"]) for t in stt if "t" in stt[t]] if stt else self.getColumns()
 
         if colList and len (colList)>0:
@@ -164,13 +153,13 @@ class cnDb (object):
             if boolToCreate:
                 sql = "CREATE TABLE "+tblName+" \n"
                 if seq:
-                    colSeqName = seq['column'].replace(prePos,"").replace(postPos,"")
+                    colSeqName = seq['column'].replace("[","").replace("]","")
                     colType    = getattr(queries, self.cType + "_seq")(seq)
-                    col += prePos+colSeqName+postPos+"\t"+ colType
+                    col += "["+colSeqName+"]"+"\t"+ colType
                 for colTup in colList:
-                    colName = colTup[0].replace(prePos,"").replace(postPos,"")
+                    colName = colTup[0].replace("[","").replace("]","")
                     if colName != colTup[1]:
-                        col += prePos+colName+postPos+"\t"+ colTup[1] +",\n"
+                        col += "["+colName+"]"+"\t"+ colTup[1] +",\n"
                 col = col[:-2]
                 col+=")"
                 sql += col
@@ -229,7 +218,7 @@ class cnDb (object):
                 if addSourceColumn or stt is None:
                     tableStructure.append( ( cName,cType ) )
                 else:
-                    if str(cName, 'utf-8') in sttSource:
+                    if unicode(cName) in sttSource:
                         tableStructure.append((cName, cType))
                 if cName in sttSource:
                     targetKey  = sttSource[cName]
@@ -274,7 +263,7 @@ class cnDb (object):
             p("db->toTarget: ERROR, sample result: %s " % str(results[0]), "e")
             p(str(e), "e")
 
-            if targetObj and targetObj and config.RESULT_LOOP_ON_ERROR:
+            if targetObj and config.RESULT_LOOP_ON_ERROR:
                 p("db->toTarget: ERROR, Loading row by row  ", "e")
 
                 iCnt = 0
@@ -323,7 +312,7 @@ class cnDb (object):
                                 fnStr = fnList[1]
                                 fnEval = fnList[2]
                                 newVal = [str(r[cr]).decode(config.FILE_DECODING) for cr in pos]
-                                newValStr = str(fnStr, 'utf-8').format(*newVal)
+                                newValStr = unicode(fnStr).format(*newVal)
                                 r[fnPos] = eval(newValStr) if fnEval else newValStr
                         results[cntRows] = r
             except Exception as e:
@@ -441,7 +430,7 @@ class cnDb (object):
         return res
 
     def __chunker(self, seq, size):
-        return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
 
     def __cloneObject(self, colList, tblName=None):
         existStrucute = []
@@ -524,20 +513,26 @@ class cnDb (object):
                         self.cursor.execdirect(s)
                         #self.conn.autocommit = False
                     else:
-                        self.cursor.execute(s)
+                        self.cursor.execute(s)  # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(s)
             else:
                 if direct:
                     #self.conn.autocommit = True
                     self.cursor.execdirect(sql)
                     #self.conn.autocommit = False
                 else:
-                    self.cursor.execute(sql)
+                    self.cursor.execute(sql)    # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(sql)
             if commit:
-                self.conn.commit()
+                self.conn.commit()          # if 'ceodbc' in odbc.__name__.lower() else self.cursor.commit()
             return True
-        except  Exception as e:
+        except Exception as e:
+            if e.args:
+                error = e.args
+                msg = decodeStrPython2Or3 (error, un=False)
+            else:
+                msg = e
             p("db->__executeSQL: ERROR : ")
-            p(u"db->__executeSQL: ERROR \n: %s " % e, "e")
+            print (e)
+            p("db->__executeSQL: ERROR %s " % str(msg), "e")
             p ("db->__executeSQL: ERROR SQL: %s " %(sql),"e" )
             return False
 
@@ -643,10 +638,8 @@ class cnDb (object):
 
         if sqlQ and len(sqlQ)>0:
             sttTemp             = OrderedDict()
-            preDB,postDB        = config.DATA_TYPE['colFrame'][self.cType]
-            sqlQ                = replaceStr (sString=sqlQ,findStr='CLASS', repStr=preDB+'CLASS'+postDB, ignoreCase=True)
+            # sqlQ                = sqlQ.replace ("'",'"')
             columnTblDic        = queryParser.extract_tableAndColumns(sqlQ)
-
 
             allColumnsList      = [x for x in columnTblDic[config.QUERY_ALL_COLUMNS_KEY]]
             allColumnsTarget    = [x for x in columnTblDic[config.QUERY_TARGET_COLUMNS]]
@@ -660,17 +653,17 @@ class cnDb (object):
 
             # update allTableStrucure dictionary : {tblName:{col name : ([original col name] , [tbl name] , [col structure])}}
             for tbl in columnTblDic:
-                if tbl not in config.QUERY_ALL_COLUMNS_KEY and tbl not in config.QUERY_TARGET_COLUMNS:
+                if tbl not in config.QUERY_ALL_COLUMNS_KEY:
                     fullTableName                   = tbl
                     allTableStrucure[tbl.lower()]   = {}
                     if 'schema' in columnTblDic[tbl] and columnTblDic[tbl]['schema'] and len (columnTblDic[tbl]['schema'])>0:
                         fullTableName = columnTblDic[tbl]['schema']+"."+tbl
 
-
                     sql = getattr(queries, self.cType + "_columnDefinition")(fullTableName)
-                    self.__executeSQL(sql, commit=False )
+                    self.__executeSQL(str (sql), commit=False )
+
                     for row in self.cursor.fetchall():
-                        allTableStrucure[tbl.lower()][row[0].lower()] = ( row[0], tbl,  row[1].lower().strip().replace(' ', '') )
+                        allTableStrucure[tbl.lower()][row[0].lower()] = ( decodeStrPython2Or3 (row[0], un=True), decodeStrPython2Or3 (tbl, un=True), decodeStrPython2Or3 (row[1].lower().strip().replace(' ', ''), un=True)  )
 
             # Create source mapping -> tableStructure
             # update mappingDic if there is column mapping
@@ -679,11 +672,11 @@ class cnDb (object):
                 targetName = allColumnsTarget[i]
                 colType, colTbl, colName = self.__sqlQueryMappingHelp (allTableStrucure, col[1])
                 if colName:
-                    fullColName = colName + u"_" + colTbl if alldistinctColumn.count(colName) > 1 else colName
+                    fullColName = unicode(colName + u"_" + colTbl) if alldistinctColumn.count(colName) > 1 else unicode(colName)
                     if len(col[0])>0:
                         fullColName = col[0]+"."+fullColName
                         colName = col[0]+"."+colName
-                    tableStructure.append((fullColName, colType))
+                    tableStructure.append((unicode(fullColName), colType))
                     # update stt dictionary, if there is a mapping frorm query
                     sttTemp[targetName] = {"s":colName,"t":colType}
 
@@ -698,7 +691,7 @@ class cnDb (object):
                                 colType = allTableStrucure[tblName][colTup][2]
                                 fullColName = tblName+"."+colName
 
-                                tableStructure.append((fullColName, colType))
+                                tableStructure.append((unicode(fullColName), colType))
                                 sttTemp[colName] = {"s": colName, "t": colType}
 
             self.cColumns = tableStructure

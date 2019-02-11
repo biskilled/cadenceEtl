@@ -1,4 +1,3 @@
-# -*- coding: windows-1255 -*-
 # (c) 2017-2019, Tal Shany <tal.shany@biSkilled.com>
 #
 # This file is part of popEye
@@ -23,12 +22,14 @@ import os
 import json
 import multiprocessing
 import time
-from collections import OrderedDict
+import io
+from collections import OrderedDict, Counter
 
-from lib.popeye.config import config,p, setQueryWithParams
-from lib.popeye.connections.dbSqlLite import sqlLite
-from lib.popeye.connections.connector import connector
-from lib.popeye.glob.globalFunctions import logsToDb
+from lib.popeye.config                  import config
+from lib.popeye.glob.glob               import p, setQueryWithParams
+from lib.popeye.connections.dbSqlLite   import sqlLite
+from lib.popeye.connections.connector   import connector
+from lib.popeye.glob.globalDBFunctions  import logsToDb
 
 # Will merge table with connection in source object
 def execMerge (dst, merge, sttDic, toCreate=True):
@@ -230,7 +231,7 @@ def execLoading ( params ):
         srcObj = connector(connProp=src, isSql=isSql)
 
     # Check if source is same as target connection (only for merge option)
-    if sorted(src) != sorted(dst):
+    if  set([tuple(lst) for lst in src]) != set([tuple(lst) for lst in dst]):
         # load all source data
         sttDic = srcObj.structure(stt=sttDic,addSourceColumn=addSourceColumn)
         # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
@@ -256,7 +257,7 @@ def loading (sourceList=None, destList=None):
     processList = []
 
     for index, js in enumerate(jsonFiles):
-        with open(os.path.join(config.DIR_DATA, js), encoding="utf-8") as jsonFile:
+        with io.open(os.path.join(config.DIR_DATA, js), encoding="utf-8") as jsonFile:           #
             jText = json.load(jsonFile, object_pairs_hook=OrderedDict)
 
         processList = list([])
@@ -264,7 +265,7 @@ def loading (sourceList=None, destList=None):
         p("loader->loading: Start loading from file %s >>>>>>" %(str(js)), "i")
         sTime = time.time()
         for jMap in jText:
-            keys        = map(lambda x: x.lower(), jMap.keys())
+            keys        = [x.lower() for x in jMap.keys()]
             dst         = {'target', 'tar'}.intersection(set(keys))
             src         = {'source','src'}.intersection(set(keys))
             query       = {'query'}.intersection(set(keys))
@@ -275,6 +276,7 @@ def loading (sourceList=None, destList=None):
             seq         = {'seq'}.intersection(set(keys))
             stt         = {'stt', 'sttappend'}.intersection(set(keys))
             sttDic      = None
+
 
             # exists source/query AND destination OR destination and merge only
             if len(dst)>0 and (len(src)>0 or len(query)>0) or ( len(merge)>0 and len(dst)>0 )  :
@@ -352,8 +354,6 @@ def loading (sourceList=None, destList=None):
 
             else:
                 p("loader->loading: There is nothing to do >>>>>>>>>>>>>>", "i")
-                p(str(jMap), "i")
-                p("loader->loading: There is nothing to do >>>>>>>>>>>>>>", "i")
 
             eTime = (time.time() - sTime) / 60          # in minutes
 
@@ -378,7 +378,3 @@ def loading (sourceList=None, destList=None):
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
-
-    #parser = argparse.ArgumentParser(description='Loading data from json files, cant get: source list files or destination list files or append mode () ')
-    #loading(appendData=False, sourceList=None, destList=None)  # destList=[u'AUT_M_OVED2']
-    #main ()

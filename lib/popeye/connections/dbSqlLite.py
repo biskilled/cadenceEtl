@@ -20,7 +20,7 @@ __metaclass__ = type
 
 import os
 import sqlite3
-from lib.popeye.config import p
+from lib.popeye.glob.glob import p
 
 class sqlLite ():
     def __init__(self, connFile):

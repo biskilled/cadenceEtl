@@ -21,10 +21,12 @@ __metaclass__ = type
 import json
 import os
 import re
-
+import io
 from collections import OrderedDict
-from lib.popeye.config import config, p
-from lib.popeye.glob.globalFunctions import checkSequence, logsToDb
+
+from lib.popeye.config import config
+from lib.popeye.glob.glob import p
+from lib.popeye.glob.globalDBFunctions import checkSequence, logsToDb
 from lib.popeye.connections.connector import connector
 
 # mapping - change source data type to destination data type
@@ -182,7 +184,7 @@ def loadJson (sourceList=None, destList=None):
         if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
 
     for index, js in enumerate(jsonFiles):
-        with open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:
+        with io.open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:
             p('mapper->loadJson: mapping from file  %s >>>>>' % (js), "ii")
             jText = json.load(jsonFile , object_pairs_hook=OrderedDict)
             for jMap in jText:
