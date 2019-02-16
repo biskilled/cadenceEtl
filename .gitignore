@@ -99,3 +99,7 @@ ENV/
 
 # Intelij - pycharm files
 .idea/
+
+# Sphincs
+# Sphincs
+docs/build/

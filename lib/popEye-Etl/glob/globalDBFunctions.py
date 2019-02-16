@@ -285,21 +285,21 @@ def parseBNZSql (sql):
 
 
     for r in ret:
-        print (r)
+        p(r)
 
 def tableToStt (tblName, connUrl, connType='sql'):
     db = cnDb (connObject=tblName, conType=connType, connUrl=connUrl)
     tblCol = db.structure(stt=None,addSourceColumn=True)
-    print ('{"target":["'+connType+'","'+tblName+'"],')
-    print ('\t"stt":{')
+    p ('{"target":["'+connType+'","'+tblName+'"],')
+    p ('\t"stt":{')
     cntC = len (tblCol)-1
     for i, c in enumerate(tblCol):
         if i == cntC:
-            print('\t\t"' + str(c) + '":{"t":"' + str(tblCol[c]['t']) + '"}')
+            p('\t\t"' + str(c) + '":{"t":"' + str(tblCol[c]['t']) + '"}')
         else:
-            print ('\t\t"'+str(c)+'":{"t":"'+str(tblCol[c]['t'])+'"},')
-    print ('\t\t}')
-    print ('\t}')
+            p ('\t\t"'+str(c)+'":{"t":"'+str(tblCol[c]['t'])+'"},')
+    p ('\t\t}')
+    p ('\t}')
     db.close()
 
 import json
@@ -309,8 +309,8 @@ def jsonToMapping (jFile):
         jText = json.load(jsonFile, object_pairs_hook=OrderedDict)
         for jMap in jText:
             if u'mapping' in jMap:
-                print ("---------------------------------------")
-                print (str(jMap[u"source"][1]))
+                p ("---------------------------------------")
+                p (str(jMap[u"source"][1]))
                 for col in jMap[u'mapping']:
-                    print ('"'+str(jMap[u'mapping'][col])+'":"'+(str(col))+'",')
+                    p ('"'+str(jMap[u'mapping'][col])+'":"'+(str(col))+'",')
 #### Private function  #####################################################

@@ -270,7 +270,6 @@ class cnDb (object):
                 for r in results:
                     try:
                         iCnt+=1
-                        #print iCnt
                         r = [r]
                         targetObj.cursor.executemany(tarSQL, r)
                         targetObj.conn.commit()
@@ -406,7 +405,6 @@ class cnDb (object):
 
     def execSP (self, sqlQuery ):
         self.__executeSQL( sqlQuery, direct=True )
-        # print sqlQuery
 
     def merge (self, mergeTable, mergeKeys ):
         targetName      = mergeTable[mergeTable.find(".")+1:] if mergeTable.find(".")>0 else mergeTable
@@ -531,9 +529,9 @@ class cnDb (object):
             else:
                 msg = e
             p("db->__executeSQL: ERROR : ")
-            print (e)
+            p(e)
             p("db->__executeSQL: ERROR %s " % str(msg), "e")
-            p ("db->__executeSQL: ERROR SQL: %s " %(sql),"e" )
+            p("db->__executeSQL: ERROR SQL: %s " %(sql),"e" )
             return False
 
     def __schemaCompare (self, colList):
@@ -576,7 +574,6 @@ class cnDb (object):
 
         # dstTable, srcTable, mergeKeys, colList , colFullList
         sql = getattr(queries, self.cType + "_merge")(dstTable, srcTable, mergeKeys, colList , colFullList)
-        # print sql
         self.__executeSQL(sql)
         p("db->sqlServer_Merge: Merged source %s table with %s table as target" % (srcTable, dstTable), "ii")
 

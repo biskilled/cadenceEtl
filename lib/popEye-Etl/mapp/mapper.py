@@ -140,7 +140,6 @@ def mapper (dicProp):
                 # check if all mapping exist in source as well
                 for col in srcC:
                     if col not in srcColumnNames:
-                        #print srcColumnNames
                         colTodel = [k for k in stt if "s" in stt[k] and stt[k]["s"]==col]
                         p ('mapper->mapper: There is Targets %s which is mapped to %s, but source not exists, ignoring targets column %s ....' %(str(colTodel), col,str(colTodel) ) ,"ii")
                         p('mapper->mapper: SOURCE COLUMNS : '  , "ii")

@@ -51,7 +51,6 @@ def __replaceParameters (connType, line, dicParam):
                 tup = tup.replace( varValue , dicParam[varKey] )
         arrRet.append(tup)
 
-    #print delimiterChar.join (arrLine)
     return delimiterChar.join (arrRet)
 
 def __split_sql_removeString (line, remove=False):

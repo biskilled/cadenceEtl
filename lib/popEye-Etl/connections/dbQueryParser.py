@@ -33,7 +33,6 @@ def is_subselect(parsed):
 def extract_from_part(parsed):
     from_seen = False
     for item in parsed.tokens:
-        #print str (item.ttype) + ","  + " , " + str (item.is_group) + " ; " + str (item)
         if item.is_group:
             for x in extract_from_part(item):
                 yield x
@@ -59,7 +58,6 @@ def extract_select_part (parsed):
     addToken            = False
 
     for item in parsed.tokens:
-        # print item.value + "  ;  " +str (item.ttype)
         if item.ttype is DML and item.value.upper() == 'SELECT':
             addToken = True
 

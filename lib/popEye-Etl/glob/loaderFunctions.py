@@ -160,13 +160,6 @@ class fClob(fncBase):
     def handler(self, col):
         if not col:
             return None
-        #if type(col) == cx_Oracle.LOB:
-            #print (str(col).encode("windows-1255"))
-            #    print "Yoooooooooooooooooooooooooooooooooo"
-            #    return str(col)
-            #else:
-            #    return None
-            # return str(col)
 
         return col
 
@@ -188,8 +181,6 @@ class fDecode (fncBase):
         if len(args)>0: self.xx = args[0]
 
     def handler(self, col):
-        #print ("this is " + str(col))
-        #print (self.xx)
         return str(col)+" sss"
 
 class fAddress (fncBase):
@@ -200,11 +191,7 @@ class fAddress (fncBase):
             self.adressType = args[0]
 
     def handler(self, col):
-        # print ("this is " + col)
         return col+self.adressType
 
-# tt = fnDecode ("xxrr")
-# tt.foldHandler ("hhhhh")
-# test()
 
 
