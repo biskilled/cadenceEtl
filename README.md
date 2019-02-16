@@ -1,3 +1,34 @@
+|PyPI version| |Docs badge| |Chat badge| |Build Status| |Code Of Conduct| |Mailing Lists| |License|
+
+**********
+popEye-Etl
+**********
+
+popEye-Etl is build for quick design and implement small or large, simple or complex 
+data integration projects. We aim to build a simple way that will enable to answer quickly on
+what do we need and how do we do it. 
+
+Documnation is in progress and will be found under http://www.biSkilled.com 
+
+installtion:
+Download as zip file all project content or use pip install (in-progress)
+
+Roadmap
+=======
+
+Currently popEye-Etl support Sql server, Access, vertica, my-sql, oracle, mongo
+In the near future we will add salesforce API support.
+Our goals in this project: 
+    - extend our connectors liberary add as many connectors as we can
+        SalesForce APIs are already coocked ....
+    - Add functionalty to manage businees-logic - 
+        - Enable Sql script to use python code 
+        - Add transfomation functionalties 
+        - Add analytics functionalties using sikit-learn / keras / pyToarch    
+    
+     
+
+
 # MAPPER #
     - mapping and loading source to target and multiprocess loading
       Supporting : file, sqlserver, mysql, oracle, vertica, access ['access','Driver','FolderPth']
