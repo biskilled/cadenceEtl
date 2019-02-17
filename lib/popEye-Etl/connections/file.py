@@ -26,9 +26,9 @@ import csv
 import io
 import pandas as pd
 
-from lib.popeye.config          import config
-from lib.popeye.glob.glob       import p
-from lib.popeye.connections.db  import cnDb
+from config          import config
+from glob.glob       import p
+from connections.db  import cnDb
 
 class cnFile ():
     # update default directory

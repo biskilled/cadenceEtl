@@ -19,7 +19,7 @@ import re
 import sys
 import datetime
 
-from lib.popeye.config import config
+from  config import config
 
 def p(msg, ind='I'):
     ind = ind.upper()

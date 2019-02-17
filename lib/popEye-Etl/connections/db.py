@@ -22,22 +22,28 @@ import os
 import multiprocessing.pool as mpool
 from collections import OrderedDict
 
-from lib.popeye.config import config
-from lib.popeye.glob.glob import p, setQueryWithParams, decodeStrPython2Or3
+from config import config
+from glob.glob import p, setQueryWithParams, decodeStrPython2Or3
+from glob.loaderFunctions import *
+import connections.dbQueries as queries
+import connections.dbQueryParser as queryParser
 
 # Data sources
 aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]
-if "sql" in aConnection or "access" in aConnection : import ceODBC as odbc #   ceODBC as odbc #pyodbc  # pyodbc version: 3.0.7
-#if "mysql" in aConnection   : import pymysql as pymysql
-#if "vertica" in aConnection : import vertica_python
+if "sql" in aConnection or "access" in aConnection :
+    import ceODBC as odbc #   ceODBC as odbc #pyodbc  # pyodbc version: 3.0.7
+
+if "mysql" in aConnection   :
+    import pymysql as pymysql
+
+if "vertica" in aConnection :
+    import vertica_python
+    # pip install vertica_python
+    # Need to install pip install sqlalchemy-vertica-python as well !!!
+
 if "oracle" in aConnection  :
     import cx_Oracle                      # version : 6.1
-# pip install vertica_python
-# Need to install pip install sqlalchemy-vertica-python as well !!!
 
-import lib.popeye.connections.dbQueries as queries
-import lib.popeye.connections.dbQueryParser as queryParser
-from lib.popeye.glob.loaderFunctions import *
 
 class cnDb (object):
     def __init__ (self, connObject, conType='sql', connUrl=None, isSql=False, connWhere=None):

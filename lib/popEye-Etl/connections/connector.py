@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
-from lib.popeye.config import config
-from lib.popeye.glob.loaderFunctions import *
-from lib.popeye.glob.glob import p
+from config import config
+from glob.loaderFunctions import *
+from glob.glob import p
 
-from lib.popeye.connections.db     import cnDb
-from lib.popeye.connections.file   import cnFile
+from connections.db     import cnDb
+from connections.file   import cnFile
 
 
 class connector ():

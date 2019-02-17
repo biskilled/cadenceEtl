@@ -25,9 +25,9 @@ import sys
 import multiprocessing
 from collections import OrderedDict
 
-from lib.popeye.connections.db  import cnDb
-from lib.popeye.config          import config
-from lib.popeye.glob.glob       import p
+from connections.db  import cnDb
+from config          import config
+from glob.glob       import p
 
 if 2 == sys.version_info[0]:
     reload(sys)

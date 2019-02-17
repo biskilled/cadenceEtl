@@ -24,10 +24,10 @@ import re
 import io
 from collections import OrderedDict
 
-from lib.popeye.config import config
-from lib.popeye.glob.glob import p
-from lib.popeye.glob.globalDBFunctions import checkSequence, logsToDb
-from lib.popeye.connections.connector import connector
+from config import config
+from glob.glob import p
+from glob.globalDBFunctions import checkSequence, logsToDb
+from connections.connector import connector
 
 # mapping - change source data type to destination data type
 def sourceToTargetDataTypes (srcType, trgType, srcColumns):

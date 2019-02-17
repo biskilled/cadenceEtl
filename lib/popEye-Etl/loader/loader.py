@@ -25,11 +25,11 @@ import time
 import io
 from collections import OrderedDict, Counter
 
-from lib.popeye.config                  import config
-from lib.popeye.glob.glob               import p, setQueryWithParams
-from lib.popeye.connections.dbSqlLite   import sqlLite
-from lib.popeye.connections.connector   import connector
-from lib.popeye.glob.globalDBFunctions  import logsToDb
+from config                  import config
+from glob.glob               import p, setQueryWithParams
+from connections.dbSqlLite   import sqlLite
+from connections.connector   import connector
+from glob.globalDBFunctions  import logsToDb
 
 # Will merge table with connection in source object
 def execMerge (dst, merge, sttDic, toCreate=True):

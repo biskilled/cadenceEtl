@@ -23,10 +23,10 @@ import smtplib
 import re
 import sys
 
-from lib.popeye.config import config
-from lib.popeye.glob.glob import p
-from lib.popeye.loader.loadExecSP import execQuery
-from lib.popeye.connections.db import cnDb
+from config import config
+from glob.glob import p
+from loader.loadExecSP import execQuery
+from connections.db import cnDb
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
