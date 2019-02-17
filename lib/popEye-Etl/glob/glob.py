@@ -17,11 +17,53 @@
 
 import re
 import sys
+import os
 import datetime
+import logging
+#logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+# filename='app.log', filemode='w',
+#logging.warning('This will get logged to a file')
+
 
 from  config import config
 
+def get_logger(
+        LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        LOG_NAME       = '',
+        LOG_DIR        = None,
+        LOG_FILE_INFO  = 'file.log',
+        LOG_FILE_ERROR = 'file.err'):
+
+    LOG_FILE_INFO = os.path.join (LOG_DIR, LOG_FILE_INFO) if LOG_DIR else None
+    LOG_FILE_INFO = os.path.join(LOG_DIR, LOG_FILE_INFO) if LOG_DIR else None
+
+    log           = logging.getLogger(LOG_NAME)
+    log_formatter = logging.Formatter(LOG_FORMAT)
+
+    # comment this to suppress console output
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(log_formatter)
+    log.addHandler(stream_handler)
+
+    if LOG_FILE_INFO and len(LOG_FILE_INFO)>0:
+        file_handler_info = logging.FileHandler(LOG_FILE_INFO, mode='w')
+        file_handler_info.setFormatter(log_formatter)
+        file_handler_info.setLevel(logging.INFO)
+        log.addHandler(file_handler_info)
+
+    if LOG_FILE_ERROR and len (LOG_FILE_ERROR)>0:
+        file_handler_error = logging.FileHandler(LOG_FILE_ERROR, mode='w')
+        file_handler_error.setFormatter(log_formatter)
+        file_handler_error.setLevel(logging.ERROR)
+        log.addHandler(file_handler_error)
+
+    log.setLevel(logging.INFO)
+
+    return log
+
 def p(msg, ind='I'):
+    logg = get_logger(LOG_DIR=None)
     ind = ind.upper()
     indPrint = {'E': 'ERROR>> ',
                 'I': 'Information>> ',
@@ -44,9 +86,13 @@ def p(msg, ind='I'):
         if config.LOGS_PRINT and ind in allowToPrint:
             timeStr = localTime.strftime("%d/%m/%Y %H:%M:%S")
             if 'III' in ind:
-                print("\r" + timeStr + ' ' + indPrint[ind] + msg)
+                logg.debug("\r" + indPrint[ind] + msg)
+            elif 'II' in ind:
+                logg.info(indPrint[ind] + msg)
+            elif 'I' in ind:
+                logg.warning(indPrint[ind] + msg)
             else:
-                print(timeStr + ' ' + indPrint[ind] + msg)
+                logg.error(indPrint[ind] + msg)
 
 def setQueryWithParams(query):
     qRet = ""
