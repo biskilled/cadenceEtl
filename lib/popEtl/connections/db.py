@@ -22,11 +22,11 @@ import os
 import multiprocessing.pool as mpool
 from collections import OrderedDict
 
-from config import config
-from glob.glob import p, setQueryWithParams, decodeStrPython2Or3
-from glob.loaderFunctions import *
-import connections.dbQueries as queries
-import connections.dbQueryParser as queryParser
+from popEtl.config import config
+from popEtl.glob.glob import p, setQueryWithParams, decodeStrPython2Or3
+from popEtl.glob.loaderFunctions import *
+import popEtl.connections.dbQueries as queries
+import popEtl.connections.dbQueryParser as queryParser
 
 # Data sources
 aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]

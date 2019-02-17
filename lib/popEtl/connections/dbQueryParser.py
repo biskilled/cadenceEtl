@@ -19,8 +19,8 @@ import sqlparse
 from sqlparse.sql       import IdentifierList, Identifier
 from sqlparse.tokens    import Keyword, DML
 
-from config      import config
-from glob.glob   import p
+from popEtl.config      import config
+from popEtl.glob.glob   import p
 
 def is_subselect(parsed):
     if not parsed.is_group:

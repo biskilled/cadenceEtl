@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
-from config import config
-from glob.loaderFunctions import *
-from glob.glob import p
+from popEtl.config import config
+from popEtl.glob.loaderFunctions import *
+from popEtl.glob.glob import p
 
-from connections.db     import cnDb
-from connections.file   import cnFile
+from popEtl.connections.db     import cnDb
+from popEtl.connections.file   import cnFile
 
 
 class connector ():

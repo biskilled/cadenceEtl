@@ -25,11 +25,11 @@ import time
 import io
 from collections import OrderedDict, Counter
 
-from config                  import config
-from glob.glob               import p, setQueryWithParams
-from connections.dbSqlLite   import sqlLite
-from connections.connector   import connector
-from glob.globalDBFunctions  import logsToDb
+from popEtl.config                  import config
+from popEtl.glob.glob               import p, setQueryWithParams
+from popEtl.connections.dbSqlLite   import sqlLite
+from popEtl.connections.connector   import connector
+from popEtl.glob.globalDBFunctions  import logsToDb
 
 # Will merge table with connection in source object
 def execMerge (dst, merge, sttDic, toCreate=True):

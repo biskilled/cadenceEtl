@@ -14,14 +14,14 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.join('popEye-Etl', 'lib'))
+sys.path.insert(0, os.path.join('popEtl', 'lib'))
 #sys.path.insert(0, os.path.abspath(os.path.join('..', '..', '..', 'lib')))
 #sys.path.insert(0, os.path.abspath('.'))
 
 
 # -- Project information -----------------------------------------------------
 
-PROJECT     = 'popEye'
+PROJECT     = 'popEtl'
 COPYRIGHT   = '2019, BPMK ltd'
 AUTHOR      = 'Tal Shany'
 VERSION     = '1.0'
@@ -77,7 +77,7 @@ pygments_style = 'sphinx'
 #html_theme = 'alabaster'
 html_theme_path = ['_themes']
 html_theme = 'sphinx_rtd_theme'
-html_short_title = 'popEye-Etl Documentation'
+html_short_title = 'popEtl Documentation'
 
 html_theme_options = {
     'canonical_url': '',
@@ -105,7 +105,7 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = 'popEye-Etl Documentation'
+html_title = 'popEtl Documentation'
 
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -154,7 +154,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'popEye.tex', 'popEye Documentation',
+    (master_doc, 'popEtl.tex', 'popEtl Documentation',
      AUTHOR, 'manual'),
 ]
 
@@ -164,7 +164,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'popEye-Etl', 'popEye Documentation',
+    (master_doc, 'popEtl', 'popEtl Documentation',
      [AUTHOR], 1)
 ]
 
@@ -175,8 +175,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'popEye', 'popEye Documentation',
-     AUTHOR, 'popEye', 'One line description of project.',
+    (master_doc, 'popEtl', 'popEtl Documentation',
+     AUTHOR, 'popEtl', 'One line description of project.',
      'Miscellaneous'),
 ]
 

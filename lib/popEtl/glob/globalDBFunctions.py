@@ -23,10 +23,10 @@ import smtplib
 import re
 import sys
 
-from config import config
-from glob.glob import p
-from loader.loadExecSP import execQuery
-from connections.db import cnDb
+from popEtl.config import config
+from popEtl.glob.glob import p
+from popEtl.loader.loadExecSP import execQuery
+from popEtl.connections.db import cnDb
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText

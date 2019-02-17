@@ -25,9 +25,9 @@ import sys
 import multiprocessing
 from collections import OrderedDict
 
-from connections.db  import cnDb
-from config          import config
-from glob.glob       import p
+from popEtl.connections.db  import cnDb
+from popEtl.config          import config
+from popEtl.glob.glob       import p
 
 if 2 == sys.version_info[0]:
     reload(sys)

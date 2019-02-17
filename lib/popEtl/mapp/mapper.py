@@ -24,10 +24,10 @@ import re
 import io
 from collections    import OrderedDict
 
-from config         import config
-from glob.glob      import p
-from glob.globalDBFunctions import checkSequence, logsToDb
-from connections.connector  import connector
+from popEtl.config         import config
+from popEtl.glob.glob      import p
+from popEtl.glob.globalDBFunctions import checkSequence, logsToDb
+from popEtl.connections.connector  import connector
 
 # mapping - change source data type to destination data type
 def sourceToTargetDataTypes (srcType, trgType, srcColumns):

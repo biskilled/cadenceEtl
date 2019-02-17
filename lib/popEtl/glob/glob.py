@@ -26,7 +26,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:
 #logging.warning('This will get logged to a file')
 
 
-from  config import config
+from  popEtl.config import config
 
 def get_logger(
         LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',

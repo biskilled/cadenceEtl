@@ -26,9 +26,9 @@ import csv
 import io
 import pandas as pd
 
-from config          import config
-from glob.glob       import p
-from connections.db  import cnDb
+from popEtl.config          import config
+from popEtl.glob.glob       import p
+from popEtl.connections.db  import cnDb
 
 class cnFile ():
     # update default directory
