@@ -15,19 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import  (absolute_import, division, print_function)
+from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import json
 import os
 import re
 import io
-from collections import OrderedDict
+from collections    import OrderedDict
 
-from config import config
-from glob.glob import p
+from config         import config
+from glob.glob      import p
 from glob.globalDBFunctions import checkSequence, logsToDb
-from connections.connector import connector
+from connections.connector  import connector
 
 # mapping - change source data type to destination data type
 def sourceToTargetDataTypes (srcType, trgType, srcColumns):
@@ -60,7 +60,6 @@ def sourceToTargetDataTypes (srcType, trgType, srcColumns):
                 if srcTypes not in mappDic:
                     mappDic[srcTypes] = trgTypes[0] if isinstance(trgTypes, tuple) else trgTypes
 
-
     if isinstance( srcColumns, (dict, OrderedDict) ):
         listTarToSrc = [(x,srcColumns[x]["t"]) for x in srcColumns if "t" in srcColumns[x]]
     else:
@@ -90,7 +89,6 @@ def sourceToTargetDataTypes (srcType, trgType, srcColumns):
                 # for my sql only !! - int(11) will be considered as int ...
                 newField +=postType if 'int' not in replaceString else ""
         newColumns.append ( (columnName , newField) )
-
 
     if isinstance( srcColumns, (dict, OrderedDict) ):
         for tup in newColumns:
