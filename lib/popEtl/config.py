@@ -32,9 +32,6 @@ class config:
                         'file'   :{'delimiter':',','header':True, 'folder':""}
                    }
 
-    # "DRIVER={SQL Server};SERVER=JJ-TALS,1433;DATABASE=CDRDW;UID=tals;PWD=tals;"
-    # "DRIVER={SQL Server};SERVER=TAL-LENOVO,1433;DATABASE=bnz_namer;UID=tals;PWD=tals;"
-
     # Sql table configurations
     TABLE_HISTORY       = True
     FILE_MIN_SIZE       = 1024

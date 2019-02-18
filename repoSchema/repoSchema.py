@@ -1,8 +1,8 @@
 import sys
 sys.path.append("../")
-from lib.popeye.config import config
+from popEtl.config import config
 config.CONNECTIONS_ACTIVE = {"sql": "cnDb"}
-import lib.popeye.mapp.mapper as mapper
+import popEtl.mapp.mapper as mapper
 
 config.CONN_URL   = {'sql' : "DRIVER={SQL Server};SERVER=XXXXX;DATABASE=YOYOYO;UID=YOYOYO;PWD=YOYOYO;",
                      'sqlRepo': "DRIVER={SQL Server};SERVER=XXXXX,1433;DATABASE=YOYOYO;UID=YOYOYO;PWD=YOYOYO;"}

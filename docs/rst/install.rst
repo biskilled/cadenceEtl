@@ -3,7 +3,14 @@
 installation
 ============
 
-install instruction
+.. |github_link| raw:: html
+
+   <a href="https://github.com/biskilled/popEtl" target="_blank">GitHub</a>
+
+You can dowload popEtl from |github_link| or by usin pip install::
+
+    pip install popEtl
+
 
 .. code-block:: python
 
@@ -16,4 +23,5 @@ install instruction
 configuration
 =============
 
-config instructions .....
+config is a class under config.py
+
