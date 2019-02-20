@@ -15,39 +15,39 @@
 # You should have received a copy of the GNU General Public License
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
-from popEtl.config import config
-from popEtl.glob.loaderFunctions import *
-from popEtl.glob.glob import p
+from popEtl.config                  import config
+from popEtl.glob.loaderFunctions    import *
+from popEtl.glob.glob               import p
+from popEtl.glob.enums              import eConnValues
 
 from popEtl.connections.db     import cnDb
 from popEtl.connections.file   import cnFile
 
 
 class connector ():
-    def __init__ (self, connProp, connUrl=None, isSql=False):
+    def __init__ (self, connDic  ):
+        # connProp, connUrl=None, isSql=False, fileName=None
+        # Expose all paramters into mapper and loader classes
+        if connDic is None:
+            p ("CONNECTOR->init: %s is Not valid connection .... quiting ...." %(str(connDic)) ,"e")
+            return
+
         self.objClass   = None
-        self.cIsSql     = isSql
-        self.cWhere     = None
+        self.cName      = connDic [ eConnValues.connName ]
 
-        # connType    = connProp[0].lower()
-        connType = ''.join([i for i in connProp[0].lower() if not i.isdigit()])
-        self.cType = connType
-        self.cName = connProp[1]
-        self.cUrl = connUrl if connUrl else config.CONN_URL[connProp[0].lower()]
-
-        className   = eval ( config.CONNECTIONS_ACTIVE[connType] )
-        if len(connProp)==3:    self.cWhere = connProp[2]
+        className   = eval ( config.CONNECTIONS_ACTIVE[connDic [eConnValues.connType] ] )
 
         if className:
-                self.objClass   = className(self.cName, self.cType, self.cUrl, self.cIsSql, self.cWhere)
+                self.objClass   = className(connDic)
                 self.cType      = self.objClass.cType
                 self.cName      = self.objClass.cName
                 self.cursor     = self.objClass.cursor
                 self.conn       = self.objClass.conn
                 self.cColumns   = self.objClass.cColumns
         else:
-            p ("CONNECTOR->init: %s is Not valid connection .... quiting ...." %(connProp) ,"e")
+            p ("CONNECTOR->init: %s is Not valid connection .... quiting ...." %(str(connDic)) ,"e")
             return
+
 
     # GENERAL
     def setColumns(self, sttDic):

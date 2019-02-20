@@ -28,21 +28,22 @@ import pandas as pd
 
 from popEtl.config          import config
 from popEtl.glob.glob       import p
+from popEtl.glob.enums      import eConnValues
 from popEtl.connections.db  import cnDb
 
 class cnFile ():
-    # update default directory
-    def __init__ (self,connObject, conType='file', connUrl=None, connQuery=False, connWhere=None):
-        self.cName      = str (connObject, 'utf-8')
-        self.cType      = conType
+    def __init__ (self, connDic):
+
+        self.cName      = connDic [ eConnValues.connObj ]
+        self.cType      = connDic [ eConnValues.connType ]
         self.columns    = []
-        self.cUrl       = connUrl if connUrl else config.CONN_URL[self.cType]
+        self.cUrl       = connDic [ eConnValues.connUrl ]
         self.cursor     = None
         self.conn       = None
         self.cColumns   = None
 
-        self.header      = None
-        self.fnDic       = None
+        self.header     = None
+        self.fnDic      = None
 
         connProp = self.cUrl.keys()
         self.fileDelimiter  = self.cUrl['delimiter'] if 'delimiter' in connProp else config.FILE_DEFAULT_DELIMITER

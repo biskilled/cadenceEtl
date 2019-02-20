@@ -20,6 +20,9 @@ import sys
 import os
 import datetime
 import logging
+from collections import OrderedDict
+
+from popEtl.glob.enums import eConnValues, eDbType
 #logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 # filename='app.log', filemode='w',
@@ -135,3 +138,64 @@ def decodeStrPython2Or3 (sObj, un=True):
             return unicode (sObj)
         else:
             return str(sObj).decode("windows-1255")
+
+def setDicConnValue (connJsonVal, connType=None, connName=None, connObj=None, connFilter=None, connUrl=None, extraConnVal=None, isSql=False, isTarget=False, isSource=False):
+    retVal = {eConnValues.connName:connName,
+              eConnValues.connType:connType.lower(),
+              eConnValues.connUrl:connUrl,
+              eConnValues.connUrlExParams:extraConnVal,
+              eConnValues.connObj:connObj,
+              eConnValues.connFilter:connFilter,
+              eConnValues.connIsSql:isSql,
+              eConnValues.connIsSrc:isSource,
+              eConnValues.connIsTar:isTarget}
+
+    if isinstance( connJsonVal, (tuple,list) ):
+        if len (connJsonVal) == 1:
+            retVal[eConnValues.connName] = connJsonVal[0]
+        elif len (connJsonVal) >= 2:
+            retVal[eConnValues.connName] = connJsonVal[0]
+            retVal[eConnValues.connObj]  = connJsonVal[1]
+            if retVal[eConnValues.connType] is None:
+                retVal[eConnValues.connType] = connJsonVal[0].lower()
+            if len (connJsonVal) == 3:
+                retVal[eConnValues.connFilter]= connJsonVal[2]
+        else:
+            p("glob->_setDicConnValue: Connection paramter is not valid %s must have 1,2 or 3 params: %s " %(str(connJsonVal), "e"))
+            return None
+
+        if retVal[eConnValues.connName] is None:
+            p("glob->_setDicConnValue: Connection Name is not defined: %s " %(connJsonVal))
+            return None
+
+        if retVal[eConnValues.connUrl] is None:
+            if retVal[eConnValues.connName] in config.CONN_URL:
+                connUrl = config.CONN_URL[ retVal[eConnValues.connName] ]
+                retVal[eConnValues.connUrl] = connUrl
+                if isinstance(connUrl, (dict, OrderedDict) ):
+                    if eConnValues.connType in connUrl:
+                        retVal[eConnValues.connType] = connUrl[eConnValues.connType].lower()
+                    if eConnValues.connUrl in connUrl:
+                        retVal[eConnValues.connUrl] = connUrl[eConnValues.connUrl]
+            else:
+                p("glob->_setDicConnValue: Connection Name is not defined in CONN_URL config. define names are : %s  "  %(str(list(config.CONN_URL.keys()))))
+                return None
+        # remove number from connection type in case we used it in config.CONN_URL
+        # sample : sql1 - will be rename to sql as a type
+        retVal[eConnValues.connType] = ''.join([i for i in retVal[eConnValues.connType].lower() if not i.isdigit()])
+
+        # For access - add paramters
+        if eDbType.ACCESS == retVal[eConnValues.connType] and retVal[eConnValues.connUrlExParams] is not None:
+            retVal[eConnValues.connUrl] = retVal[eConnValues.connUrl][0] % (retVal[eConnValues.connUrl][1] + str(retVal[eConnValues.connUrlExParams].split(".")[0] + ".accdb"))
+
+        retVal[eConnValues.connType] = eDbType.isExsists( retVal[eConnValues.connType] )
+
+        if  retVal[eConnValues.connName] is not None and \
+            retVal[eConnValues.connType] is not None and \
+            retVal[eConnValues.connObj] is not None and \
+            retVal[eConnValues.connUrl] is not None:
+                p ("glob->_setDicConnValue: Connection params: %s " %(str(retVal)),"ii")
+                return retVal
+        else:
+            p("glob->_setDicConnValue: Connection params are not set: %s " % (str(retVal)), "e")
+        return None

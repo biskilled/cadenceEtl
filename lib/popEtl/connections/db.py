@@ -25,32 +25,33 @@ from collections import OrderedDict
 from popEtl.config import config
 from popEtl.glob.glob import p, setQueryWithParams, decodeStrPython2Or3
 from popEtl.glob.loaderFunctions import *
+from popEtl.glob.enums import eDbType, eConnValues
 import popEtl.connections.dbQueries as queries
 import popEtl.connections.dbQueryParser as queryParser
 
 # Data sources
 aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]
-if "sql" in aConnection or "access" in aConnection :
+if eDbType.SQL in aConnection or eDbType.ACCESS in aConnection :
     import ceODBC as odbc #   ceODBC as odbc #pyodbc  # pyodbc version: 3.0.7
 
-if "mysql" in aConnection   :
+if eDbType.MYSQL  in aConnection   :
     import pymysql as pymysql
 
-if "vertica" in aConnection :
+if eDbType.VERTIVA in aConnection :
     import vertica_python
     # pip install vertica_python
     # Need to install pip install sqlalchemy-vertica-python as well !!!
 
-if "oracle" in aConnection  :
+if eDbType.ORACLE in aConnection  :
     import cx_Oracle                      # version : 6.1
 
 
 class cnDb (object):
-    def __init__ (self, connObject, conType='sql', connUrl=None, isSql=False, connWhere=None):
-        self.cIsSql     = isSql
-        self.cName      = setQueryWithParams (connObject)
+    def __init__ (self, connDic):
+        self.cIsSql     = connDic [ eConnValues.connIsSql]
+        self.cName      = setQueryWithParams ( connDic [ eConnValues.connObj] )
         self.cSchema    = None
-        self.cType = conType.lower()
+        self.cType      = connDic [ eConnValues.connType]
 
         if self.cIsSql:
             self.cSQL = self.cName
@@ -68,36 +69,31 @@ class cnDb (object):
         self.cColumns   = []
         # Will be update if there is a query as source and mapping in query as well (select x as yy.....
         self.cColumnsTDic= None
-        self.cUrl       = connUrl if connUrl else config.CONN_URL[self.cType]
-        self.cWhere     = connWhere
+        self.cUrl       = connDic [ eConnValues.connUrl ]
+        self.cWhere     = connDic [ eConnValues.connFilter ]
         self.cColoumnAs = True
 
         p("db->init: DB type: %s, table: %s, url: %s" % (self.cType, self.cName, str(self.cUrl)), "ii")
 
-        if 'mysql' in self.cType:
+        if eDbType.MYSQL == self.cType:
             self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
             self.cursor = self.conn.cursor()
-            self.cType = 'mysql'
-        elif 'vertica' in conType.lower():
+        elif eDbType.VERTIVA == self.cType:
             self.conn = vertica_python.connect(self.cUrl)
             self.cursor = self.conn.cursor()
-            self.cType = 'vertica'
-        elif 'oracle' in conType.lower():
+        elif eDbType.ORACLE == self.cType:
             self.conn = cx_Oracle.connect(self.cUrl['user'], self.cUrl['pass'], self.cUrl['dsn'])
             if 'nls' in self.cUrl:
                 os.environ["NLS_LANG"] = self.cUrl['nls']
-
             self.cursor = self.conn.cursor()
-            self.cType = 'oracle'
-        elif 'access' in conType.lower():
+
+        elif eDbType.ACCESS == self.cType:
             self.conn       = odbc.connect (self.cUrl) # , ansi=True
             self.cursor     = self.conn.cursor()
             self.cColoumnAs = False
-            self.cType      = 'access'
         else:
             self.conn = odbc.connect (self.cUrl) #ansi=True
             self.cursor = self.conn.cursor()
-            self.cType =  'sql'
 
         if not self.cIsSql:
             self.cSchema =self.cName[:self.cName.find(".")] if self.cName.find(".") > 0 else config.DATA_TYPE['schema'][self.cType]

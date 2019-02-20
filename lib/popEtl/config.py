@@ -19,15 +19,16 @@ from __future__ import  (absolute_import, division, print_function)
 __metaclass__ = type
 
 import datetime
+from popEtl.glob.enums import eDbType
 
 class config:
     #########################   Feild per model ##############################################
-    CONNECTIONS_ACTIVE      = {"sql": "cnDb", "oracle": "cnDb", "mysql": "cnDb", "vertica": "cnDb", 'file': "cnFile"}
+    CONNECTIONS_ACTIVE      = {eDbType.SQL: "cnDb", eDbType.ORACLE: "cnDb", eDbType.MYSQL: "cnDb", eDbType.VERTIVA: "cnDb", eDbType.FILE: "cnFile"}
 
     DIR_DATA    = "C:\\Python27\\apps\\mapper\\dataTrade"
-    CONN_URL    =  {      'sql'    :"DRIVER={SQL Server};SERVER=TAL-LENOVO,1433;DATABASE=bnz_namer;UID=tals;PWD=tals;",
+    CONN_URL    =  {    'sql'    :"DRIVER={SQL Server};SERVER=TAL-LENOVO,1433;DATABASE=bnz_namer;UID=tals;PWD=tals;",
                         'oracle' :"DRIVER={SQL Server};SERVER=TAL-LENOVO,1433;DATABASE=bnz_namer;UID=tals;PWD=tals;",
-                        'mysql'  : "host=vertica-test-1.tuenti.int, user=bi, passwd=delegated3206, db=sampled_mirror_operational",
+                        'mysql'  :"host=vertica-test-1.tuenti.int, user=bi, passwd=delegated3206, db=sampled_mirror_operational",
                         'vertica':"DRIVER=HPVertica;SERVER=vertica-test-1.tuenti.int;DATABASE=db1;PORT=5433;UID=dbadmin;PWD=mypassword",
                         'file'   :{'delimiter':',','header':True, 'folder':""}
                    }
@@ -41,8 +42,8 @@ class config:
     TO_TRUNCATE         = True
     RESULT_LOOP_ON_ERROR= True
     # file configuration unicode
-    FILE_DECODING = "windows-1255"
-    FILE_ENCODING = "utf8"
+    FILE_DECODING       = "windows-1255"
+    FILE_ENCODING       = "utf8"
     FILE_DEFAULT_DELIMITER = ","
     FILE_DEFAULT_FOLDER = DIR_DATA
     FILE_DEFAULT_HEADER = True
@@ -67,8 +68,8 @@ class config:
 
     FILES_NOT_INCLUDE = []
 
-    NUM_OF_PROCESSES = 1
-    NUM_OF_LOADING_THREAD = 1
+    NUM_OF_PROCESSES        = 1
+    NUM_OF_LOADING_THREAD   = 1
 
     SMTP_SERVER             =  "172.31.2.10" #"smtp.gmail.com:587"
     SMTP_SERVER_USER        =  "AlertBi@b-zion.org.il" #"tal@bpmk.co.il"

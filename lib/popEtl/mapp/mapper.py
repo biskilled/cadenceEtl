@@ -24,8 +24,9 @@ import re
 import io
 from collections    import OrderedDict
 
-from popEtl.config         import config
-from popEtl.glob.glob      import p
+from popEtl.config          import config
+from popEtl.glob.glob       import p, setDicConnValue
+from popEtl.glob.enums      import eConnValues, eDbType
 from popEtl.glob.globalDBFunctions import checkSequence, logsToDb
 from popEtl.connections.connector  import connector
 
@@ -168,139 +169,142 @@ def mapper (dicProp):
         stt = isTarget.structure(stt=stt, addSourceColumn=addSourceColumn)
         isMerge.create (stt=stt,seq=seq)
 
+def _getDicKey (filterSet, allSet):
+    filterSet = set (filterSet)
+    allSet    = set (allSet)
+
+    isExists = filterSet.intersection(allSet)
+
+    if len (isExists) > 0:
+        return isExists.pop()
+    return None
+
+def extractNodes (jText,jFileName,sourceList=None, destList=None):
+    toLoad = True
+    sttDic = OrderedDict()
+
+    for jMap in jText:
+        dicProp = {}
+        srcObj  = None
+        tarObj  = None
+        sttDic  = OrderedDict()
+        dicProp['addSrcColumns'] = False
+        keys = [x.lower() for x in jMap.keys()]
+        # update all variables
+        sourceConn      = _getDicKey({'source', 'src'},keys)
+        queryConn       = _getDicKey({'query'},keys)
+        targetConn      = _getDicKey({'target', 'tar'},keys)
+        mergeConn       = _getDicKey({'merge'},keys)
+        seqFiles        = _getDicKey({'seq'},keys)
+        stt             = _getDicKey({'stt', 'sttappend'},keys)
+        targetMapping   = _getDicKey({'mapping', 'map'},keys)
+        targetColumn    = _getDicKey({'columns', 'column', 'col'},keys)
+
+        if sourceConn:
+            connDic = setDicConnValue (connJsonVal=jMap[sourceConn],extraConnVal=jFileName, isSource=True )
+            srcObj  = connDic [ eConnValues.connObj ] if connDic else None
+            dicProp['source'] = connector(connDic = connDic)
+
+        if queryConn:
+            connDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
+            srcObj = connDic[eConnValues.connObj] if connDic else None
+            dicProp['source'] = connector(connDic = connDic)
+            if sourceConn:
+                p("mappr->extractNodes: There is query and source, will be QUERY sed as SOURCE object >>>>>> ", "ii")
+
+        # target -> Connection object
+        if targetConn:
+            connDic = setDicConnValue(connJsonVal=jMap[targetConn], connObj=srcObj, extraConnVal=jFileName,  isTarget=True)
+            tarObj = connDic[eConnValues.connObj] if connDic else None
+            dicProp['target'] = connector(connDic = connDic)
+
+        # merge -> Using target connection type  with new table name
+        if mergeConn:
+            connDic = setDicConnValue(connJsonVal=jMap[mergeConn], connObj=tarObj, extraConnVal=jFileName,isTarget=True)
+            dicProp['merge'] = connector(connDic = connDic)
+
+        # create table with sequence as fisrt column -> apply on target only ! (if there is merge - will use merge option, without adding identity
+        if seqFiles:
+            # check sequence dictionay
+            dicProp['seq'] = checkSequence(jMap[seqFiles])
+            # add property - if merge is appear
+            if 'merge' in dicProp and dicProp['seq'] and len(dicProp['seq']) > 0:
+                dicProp['seq']['merge'] = True
+
+        # Check stt (source to target) --> if needs to add columns or new mapping
+        if stt:
+            sttDic = jMap[stt]
+            dicProp['stt'] = sttDic
+            if 'sttappend' in stt:  dicProp['addSrcColumns'] = True
+
+        # Mapping source to target fields
+        if targetMapping:
+            dicProp['addSrcColumns'] = False
+            if targetConn and (sourceConn or queryConn) :
+                mapping = jMap[targetMapping]
+                sttDicTemp = sttDic
+                sttDic = OrderedDict()
+                for m in mapping:
+                    if m in sttDicTemp:
+                        sttDic[m] = sttDicTemp[m]
+                        if "s" not in sttDic[m]:
+                            sttDic[m]["s"] = mapping[m]
+                    else:
+                        sttDic[m] = {"s": mapping[m]}
+                for t in sttDicTemp:
+                    if t not in sttDic: sttDic[t] = sttDicTemp[t]
+                dicProp['stt'] = sttDic
+            else:
+                p("mappr->loadJson: Mapping exists, but there is no target or source connection ... nothing to do ...","e")
+
+        # Create target column by column definitions
+        if targetColumn:
+            if targetConn:
+                columns = jMap[targetColumn]
+                sttDicTemp = sttDic
+                sttDic = OrderedDict()
+                for c in columns:
+                    if c in sttDicTemp:
+                        sttDic[c] = sttDicTemp[c]
+                        if "t" not in sttDic[c]:
+                            sttDic[c]["t"] = columns[c]
+                    else:
+                        sttDic[c] = {"t": columns[c]}
+                for t in sttDicTemp:
+                    if t not in sttDic: sttDic[t] = sttDicTemp[t]
+                dicProp['stt'] = sttDic
+                dicProp['target'].setColumns(sttDic)
+            else:
+                p("mappr->loadJson: Target columns exists, but there is no target connection ... nothing to do ...","e")
+
+        # checl list of source or target to load (if list exists)
+        if sourceList:  toLoad = True if 'source' in dicProp and dicProp['source'][1] in sourceList else False
+        if destList:    toLoad = True if 'target' in dicProp and dicProp['target'][1] in destList else False
+
+        if toLoad:
+            mapper(dicProp)
+        else:
+            p("mappr->loadJson: Src %s, dst %s , mapping %s not matched >>>> nothing to map " % (
+            str(sourceList), str(destList), str(dicProp)), "i")
+
 # Main function : loading all json file and parse them by definition
-def loadJson (sourceList=None, destList=None):
+def model (dicObj=None, sourceList=None, destList=None):
     p('mapper->loadJson: START MAPPING >>>>> data from Folder %s ...' % (config.DIR_DATA), "i")
-    toLoad      = True
-    isSource    = False
-    isTarget    = False
-    sttDic      = OrderedDict()
 
-    jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
-    for f in list (jsonFiles):
-        if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
+    if dicObj:
+        dicObj = list (dicObj) if isinstance(dicObj, (dict,OrderedDict)) else dicObj
+        p('mapper->loadJson: loading from Dictionary  %s >>>>>' , "ii")
+        extractNodes(jText=dicObj, jFileName='', sourceList=sourceList, destList=destList)
+    else:
+        jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
+        for f in list (jsonFiles):
+            if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
 
-    for index, js in enumerate(jsonFiles):
-        with io.open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:
-            p('mapper->loadJson: mapping from file  %s >>>>>' % (js), "ii")
-            jText = json.load(jsonFile , object_pairs_hook=OrderedDict)
-            for jMap in jText:
-                dicProp = {}
-                sttDic  = OrderedDict()
-                dicProp['addSrcColumns'] = False
-                keys = [x.lower() for x in jMap.keys()]
-                # update all variables
-                sourceConn  = {'source', 'src'}.intersection(set(keys))
-                queryConn   = {'query'}.intersection(set(keys))
-                targetConn  = {'target', 'tar'}.intersection(set(keys))
-                mergeConn   = {'merge'}.intersection(set(keys))
-                seqFiles    = {'seq'}.intersection(set(keys))
-                stt         = {'stt', 'sttappend'}.intersection(set(keys))
-                targetMapping = {'mapping', 'map'}.intersection(set(keys))
-                targetColumn = {'columns', 'column', 'col'}.intersection(set(keys))
+        for index, js in enumerate(jsonFiles):
+            with io.open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:
+                p('mapper->loadJson: mapping from file  %s >>>>>' % (js), "ii")
+                jText = json.load(jsonFile , object_pairs_hook=OrderedDict)
+                extractNodes(jText=jText, jFileName=js, sourceList=sourceList, destList=destList)
 
-                if len(sourceConn)>0:
-                    sourceConn = sourceConn.pop()
-                    # Access -> connection by file name
-                    if "access" in jMap[sourceConn][0]:
-                        accessFilePath = config.CONN_URL["access"][0] %(config.CONN_URL["access"][1]+str(js.split(".")[0]+".accdb"))
-                        dicProp['source'] = connector(jMap[sourceConn], connUrl=accessFilePath)
-                    else:
-                        dicProp['source'] = connector ( jMap[sourceConn] )
-                    isSource = True
-
-                if len(queryConn)>0:
-                    sourceConn = queryConn.pop()
-                    dicProp['source'] = connector(connProp=jMap[sourceConn], isSql=True)
-                    if isSource:
-                        p("mappr->loadJson: There is query and source, will be QUERY sed as SOURCE object >>>>>> ", "ii")
-                    else:
-                        isSource = True
-
-                # target -> Connection object
-                if len(targetConn)>0:
-                    targetConn = targetConn.pop()
-                    isTarget = True
-                    # there is only target ype
-                    if len(jMap[targetConn]) == 1:
-                        if sourceConn and len (jMap[sourceConn])>1:
-                            tmpTargetConn = [jMap[targetConn][0] , jMap[sourceConn][1] ]
-                            dicProp['target'] = connector ( tmpTargetConn )
-                    else:
-                        dicProp['target'] = connector ( jMap[targetConn] )
-
-                # merge -> Using target connection type  with new table name
-                if len(mergeConn)>0:
-                    mergeConn = mergeConn.pop()
-                    newMergeConn = [jMap[targetConn][0],jMap[mergeConn][0]]
-                    dicProp['merge'] = connector ( newMergeConn  )
-
-                # create table with sequence as fisrt column -> apply on target only ! (if there is merge - will use merge option, without adding identity
-                if len(seqFiles)>0:
-                    seqFiles = seqFiles.pop()
-                    # check sequence dictionay
-                    dicProp['seq'] = checkSequence ( jMap[ seqFiles ] )
-                    # add property - if merge is appear
-                    if 'merge' in dicProp and dicProp['seq'] and len (dicProp['seq'])>0:
-                        dicProp['seq']['merge'] = True
-
-                # Check stt (source to target) --> if needs to add columns or new mapping
-                if len(stt)>0:
-                    stt = stt.pop()
-                    sttDic = jMap[stt]
-                    dicProp['stt'] = sttDic
-                    if 'sttappend' in stt:  dicProp['addSrcColumns'] = True
-
-                # Mapping source to target fields
-                if len(targetMapping) > 0:
-                    dicProp['addSrcColumns'] = False
-                    targetMapping = targetMapping.pop()
-                    if isSource and isTarget:
-                        mapping = jMap[targetMapping]
-                        sttDicTemp = sttDic
-                        sttDic = OrderedDict()
-                        for m in mapping:
-                            if m in sttDicTemp:
-                                sttDic[m] = sttDicTemp[m]
-                                if "s" not in sttDic[m]:
-                                    sttDic[m]["s"] = mapping[m]
-                            else:
-                                sttDic[m] = {"s":mapping[m]}
-                        for t in sttDicTemp:
-                            if t not in sttDic: sttDic[t] = sttDicTemp[t]
-                        dicProp['stt'] = sttDic
-                    else:
-                        p("mappr->loadJson: Mapping exists, but there is no target or source connection ... nothing to do ...","e")
-
-                # Create target column by column definitions
-                if len(targetColumn)>0:
-                    targetColumn = targetColumn.pop()
-                    if isTarget:
-                        columns     = jMap[targetColumn]
-                        sttDicTemp  = sttDic
-                        sttDic      = OrderedDict()
-                        for c in columns:
-                            if c in sttDicTemp:
-                                sttDic[c] = sttDicTemp[c]
-                                if "t" not in sttDic[c]:
-                                    sttDic[c]["t"] = columns[c]
-                            else:
-                                sttDic[c] = {"t":columns[c]}
-                        for t in sttDicTemp:
-                            if t not in sttDic: sttDic[t] = sttDicTemp[t]
-                        dicProp['stt'] = sttDic
-                        dicProp['target'].setColumns(sttDic)
-                    else:
-                        p("mappr->loadJson: Target columns exists, but there is no target connection ... nothing to do ...","e")
-
-                # checl list of source or target to load (if list exists)
-                if sourceList:  toLoad = True if 'source' in dicProp and dicProp['source'][1] in sourceList else False
-                if destList:    toLoad = True if 'target' in dicProp and dicProp['target'][1] in destList else False
-
-                if toLoad:
-                    mapper(dicProp)
-                else:
-                    p ("mappr->loadJson: Src %s, dst %s , mapping %s not matched >>>> nothing to map " %( str(sourceList), str(destList), str(dicProp) ), "i")
-        if config.LOGS_IN_DB: logsToDb()
+    if config.LOGS_IN_DB: logsToDb()
     p ('mapper->loadJson: FINISH MAPPING >>>>>', "i" )
-## loadJson ()
