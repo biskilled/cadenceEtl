@@ -22,11 +22,11 @@ import json
 import os
 import re
 import io
-from collections    import OrderedDict
+from collections            import OrderedDict
 
 from popEtl.config          import config
-from popEtl.glob.glob       import p, setDicConnValue
-from popEtl.glob.enums      import eConnValues, eDbType
+from popEtl.glob.glob       import p, setDicConnValue, getDicKey
+from popEtl.glob.enums      import eConnValues, ePopEtlProp
 from popEtl.glob.globalDBFunctions import checkSequence, logsToDb
 from popEtl.connections.connector  import connector
 
@@ -169,46 +169,36 @@ def mapper (dicProp):
         stt = isTarget.structure(stt=stt, addSourceColumn=addSourceColumn)
         isMerge.create (stt=stt,seq=seq)
 
-def _getDicKey (filterSet, allSet):
-    filterSet = set (filterSet)
-    allSet    = set (allSet)
-
-    isExists = filterSet.intersection(allSet)
-
-    if len (isExists) > 0:
-        return isExists.pop()
-    return None
-
 def extractNodes (jText,jFileName,sourceList=None, destList=None):
-    toLoad = True
     sttDic = OrderedDict()
 
     for jMap in jText:
+        toLoad = True
         dicProp = {}
         srcObj  = None
         tarObj  = None
         sttDic  = OrderedDict()
-        dicProp['addSrcColumns'] = False
+        dicProp[ ePopEtlProp.add ] = False
         keys = [x.lower() for x in jMap.keys()]
         # update all variables
-        sourceConn      = _getDicKey({'source', 'src'},keys)
-        queryConn       = _getDicKey({'query'},keys)
-        targetConn      = _getDicKey({'target', 'tar'},keys)
-        mergeConn       = _getDicKey({'merge'},keys)
-        seqFiles        = _getDicKey({'seq'},keys)
-        stt             = _getDicKey({'stt', 'sttappend'},keys)
-        targetMapping   = _getDicKey({'mapping', 'map'},keys)
-        targetColumn    = _getDicKey({'columns', 'column', 'col'},keys)
+        sourceConn      = getDicKey(ePopEtlProp.src,keys)
+        queryConn       = getDicKey(ePopEtlProp.qry,keys)
+        targetConn      = getDicKey(ePopEtlProp.tar,keys)
+        mergeConn       = getDicKey(ePopEtlProp.mrg,keys)
+        seqFiles        = getDicKey(ePopEtlProp.seq,keys)
+        stt             = getDicKey(ePopEtlProp.stt,keys)
+        targetMapping   = getDicKey(ePopEtlProp.map,keys)
+        targetColumn    = getDicKey(ePopEtlProp.col,keys)
 
         if sourceConn:
             connDic = setDicConnValue (connJsonVal=jMap[sourceConn],extraConnVal=jFileName, isSource=True )
             srcObj  = connDic [ eConnValues.connObj ] if connDic else None
-            dicProp['source'] = connector(connDic = connDic)
+            dicProp[ePopEtlProp.src] = connector(connDic = connDic)
 
         if queryConn:
             connDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
             srcObj = connDic[eConnValues.connObj] if connDic else None
-            dicProp['source'] = connector(connDic = connDic)
+            dicProp[ePopEtlProp.src] = connector(connDic = connDic)
             if sourceConn:
                 p("mappr->extractNodes: There is query and source, will be QUERY sed as SOURCE object >>>>>> ", "ii")
 
@@ -216,30 +206,30 @@ def extractNodes (jText,jFileName,sourceList=None, destList=None):
         if targetConn:
             connDic = setDicConnValue(connJsonVal=jMap[targetConn], connObj=srcObj, extraConnVal=jFileName,  isTarget=True)
             tarObj = connDic[eConnValues.connObj] if connDic else None
-            dicProp['target'] = connector(connDic = connDic)
+            dicProp[ePopEtlProp.tar] = connector(connDic = connDic)
 
         # merge -> Using target connection type  with new table name
         if mergeConn:
             connDic = setDicConnValue(connJsonVal=jMap[mergeConn], connObj=tarObj, extraConnVal=jFileName,isTarget=True)
-            dicProp['merge'] = connector(connDic = connDic)
+            dicProp[ePopEtlProp.mrg] = connector(connDic = connDic)
 
         # create table with sequence as fisrt column -> apply on target only ! (if there is merge - will use merge option, without adding identity
         if seqFiles:
             # check sequence dictionay
-            dicProp['seq'] = checkSequence(jMap[seqFiles])
+            dicProp[ePopEtlProp.seq] = checkSequence(jMap[seqFiles])
             # add property - if merge is appear
-            if 'merge' in dicProp and dicProp['seq'] and len(dicProp['seq']) > 0:
-                dicProp['seq']['merge'] = True
+            if ePopEtlProp.mrg in dicProp and ePopEtlProp.seq in dicProp and len(dicProp[ePopEtlProp.seq]) > 0:
+                dicProp[ePopEtlProp.seq][ePopEtlProp.mrg] = True
 
         # Check stt (source to target) --> if needs to add columns or new mapping
         if stt:
             sttDic = jMap[stt]
-            dicProp['stt'] = sttDic
-            if 'sttappend' in stt:  dicProp['addSrcColumns'] = True
+            dicProp[ePopEtlProp.stt] = sttDic
+            if ePopEtlProp.sttA in stt:  dicProp[ePopEtlProp.add] = True
 
         # Mapping source to target fields
         if targetMapping:
-            dicProp['addSrcColumns'] = False
+            dicProp[ePopEtlProp.add] = False
             if targetConn and (sourceConn or queryConn) :
                 mapping = jMap[targetMapping]
                 sttDicTemp = sttDic
@@ -253,7 +243,7 @@ def extractNodes (jText,jFileName,sourceList=None, destList=None):
                         sttDic[m] = {"s": mapping[m]}
                 for t in sttDicTemp:
                     if t not in sttDic: sttDic[t] = sttDicTemp[t]
-                dicProp['stt'] = sttDic
+                dicProp[ePopEtlProp.stt] = sttDic
             else:
                 p("mappr->loadJson: Mapping exists, but there is no target or source connection ... nothing to do ...","e")
 
@@ -272,14 +262,18 @@ def extractNodes (jText,jFileName,sourceList=None, destList=None):
                         sttDic[c] = {"t": columns[c]}
                 for t in sttDicTemp:
                     if t not in sttDic: sttDic[t] = sttDicTemp[t]
-                dicProp['stt'] = sttDic
-                dicProp['target'].setColumns(sttDic)
+                dicProp[ePopEtlProp.stt] = sttDic
+                dicProp[ePopEtlProp.tar].setColumns(sttDic)
             else:
                 p("mappr->loadJson: Target columns exists, but there is no target connection ... nothing to do ...","e")
 
         # checl list of source or target to load (if list exists)
-        if sourceList:  toLoad = True if 'source' in dicProp and dicProp['source'][1] in sourceList else False
-        if destList:    toLoad = True if 'target' in dicProp and dicProp['target'][1] in destList else False
+        if sourceList:
+            sourceList = [x.lower() for x in sourceList]
+            toLoad = True if ePopEtlProp.src in dicProp and dicProp[ePopEtlProp.src].cName in sourceList else False
+        if destList:
+            destList = [x.lower() for x in destList]
+            toLoad = True if ePopEtlProp.tar in dicProp and dicProp[ePopEtlProp.tar].cName in destList else False
 
         if toLoad:
             mapper(dicProp)
@@ -289,11 +283,11 @@ def extractNodes (jText,jFileName,sourceList=None, destList=None):
 
 # Main function : loading all json file and parse them by definition
 def model (dicObj=None, sourceList=None, destList=None):
-    p('mapper->loadJson: START MAPPING >>>>> data from Folder %s ...' % (config.DIR_DATA), "i")
+    p('mapper->model: START MAPPING >>>>>', "i")
 
     if dicObj:
         dicObj = list (dicObj) if isinstance(dicObj, (dict,OrderedDict)) else dicObj
-        p('mapper->loadJson: loading from Dictionary  %s >>>>>' , "ii")
+        p('mapper->model: loading from Dictionary  >>>>>' , "ii")
         extractNodes(jText=dicObj, jFileName='', sourceList=sourceList, destList=destList)
     else:
         jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
@@ -302,9 +296,9 @@ def model (dicObj=None, sourceList=None, destList=None):
 
         for index, js in enumerate(jsonFiles):
             with io.open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:
-                p('mapper->loadJson: mapping from file  %s >>>>>' % (js), "ii")
+                p('mapper->model: start modeling from file  %s, folder: %s >>>>>' % (js, str(config.DIR_DATA)), "ii")
                 jText = json.load(jsonFile , object_pairs_hook=OrderedDict)
                 extractNodes(jText=jText, jFileName=js, sourceList=sourceList, destList=destList)
 
     if config.LOGS_IN_DB: logsToDb()
-    p ('mapper->loadJson: FINISH MAPPING >>>>>', "i" )
+    p ('mapper->model: FINISH DESIGN >>>>>', "i" )

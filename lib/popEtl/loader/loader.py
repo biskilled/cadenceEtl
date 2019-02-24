@@ -26,28 +26,13 @@ import io
 from collections import OrderedDict, Counter
 
 from popEtl.config                  import config
-from popEtl.glob.glob               import p, setQueryWithParams
+from popEtl.glob.glob               import p, setQueryWithParams, getDicKey, setDicConnValue
+from popEtl.glob.enums              import eConnValues, ePopEtlProp
 from popEtl.connections.dbSqlLite   import sqlLite
 from popEtl.connections.connector   import connector
 from popEtl.glob.globalDBFunctions  import logsToDb
 
-# Will merge table with connection in source object
-def execMerge (dst, merge, sttDic, toCreate=True):
-    mergeKeys = None
-    if isinstance( merge , (list,tuple) ):
-        mergeTable = merge[0]
-        mergeKeys   = merge[1]
-    else:
-        mergeTable = merge
-
-    dstObj = connector(dst)
-    # create target table same as source one
-    if toCreate:
-        dstObj.create (stt=sttDic, tblName=mergeTable )
-
-    dstObj.merge (mergeTable=mergeTable, mergeKeys=mergeKeys)
-    dstObj.close()
-
+##############   Not in used - need to check            #####################################
 # Saving into file new sequence
 def addIncSaveToFile (df, columnInc, srcObj):
     if df is not None and columnInc in df.columns:
@@ -86,24 +71,43 @@ def addIncemenral (inc, isSQL, srcObj, srcMapping=None):
 
     p("loader->addSeq: Sequence is ON, field %s, start from %s, file is update, sql: %s" % (str(columnSeq),str(columnStart),str(isSQL)), "ii")
     return isSQL, columnSeq, columnStart
+##############   Not in used - need to check            #####################################
 
-def appendPartitions (src, partition):
-    srcName = src[1]
+
+# Will merge table with connection in source object
+def _execMerge (dstDict, merge, sttDic, toCreate=True):
+    mergeKeys = None
+    if isinstance( merge , (list,tuple) ):
+        mergeTable = merge[0]
+        mergeKeys  = merge[1]
+    else:
+        mergeTable = merge
+
+    dstObj = connector(connDic=dstDict)
+    # create target table same as source one
+    if toCreate:
+        dstObj.create (stt=sttDic, tblName=mergeTable )
+
+    dstObj.merge (mergeTable=mergeTable, mergeKeys=mergeKeys)
+    dstObj.close()
+
+def _appendPartitions (srcDic, partition):
+    srcName = srcDic [eConnValues.connObj]
     ret = []
     sqlStart = "SELECT * FROM %s WHERE " %(srcName)
-    if 'column' in partition:
-        colToFilter = partition['column']
+    if eConnValues.partitionCol in partition:
+        colToFilter = partition[ eConnValues.partitionCol ]
     else:
-        p("loader->appendPartitions: There is partition without column definition table: %s ..." % (srcName), "e")
+        p("loader->_appendPartitions: There is partition without column definition table: %s ..." % (srcName), "e")
         return ret
 
-    if 'agg' in partition:
-        resolution = partition['agg']
-        srcObj = connector(src)
+    if eConnValues.partitionAgg in partition:
+        resolution = partition[ eConnValues.partitionAgg ]
+        srcObj = connector(connDic=srcDic)
 
         # Set starting from partition
-        if 'start' in partition:
-            minDate = srcObj.minValues (resolution=resolution, periods=partition['start'])
+        if eConnValues.partitionStart in partition:
+            minDate = srcObj.minValues (resolution=resolution, periods=partition[ eConnValues.partitionStart ])
         else:
             minDate = srcObj.minValues (colToFilter=colToFilter, resolution=resolution)
 
@@ -118,29 +122,30 @@ def appendPartitions (src, partition):
             minDate = newDate
             ret.append(sqlWhere)
     else:
-        p ("loader->appendPartitions: There is partition without aggragation function, needs to have 'agg' with values of 'd', 'm' or 'y', table: %s ..." %(str (src)) , "e")
+        p ("loader->_appendPartitions: There is partition without aggragation function, needs to have 'agg' with values of 'd', 'm' or 'y', table: %s ..." %(str (src)) , "e")
     return ret
 
 # jMap, src, dst
-def execTarget (dst):
-    dstConn = dst
+def _execTarget (dstDict):
 
-    if config.TO_TRUNCATE or len(dstConn) == 3:
-        dstObj = connector(dstConn)
-
-        # there is delete from destintation table
-        if len(dstConn) == 3:
-            sql = "Delete From "+dstObj.cName+" Where "+dstConn[2]
-            sql = setQueryWithParams (sql)
-            p ("loader->execTarget: Destination %s have delete query %s, deleting target " %(dstObj.cName, sql),"ii")
-            dstObj.execSP(sql)
-        else:
-            if config.TO_TRUNCATE:
-                p("loader->execTarget: Destination %s is trancating  " % (dstObj.cName),"ii")
-                dstObj.truncate()
+    if dstDict[ eConnValues.connFilter ]:
+        dstObj = connector( connDic=dstDict)
+        sql = "Delete From " + dstObj.cName + " Where " + dstDict[ eConnValues.connFilter ]
+        sql = setQueryWithParams(sql)
+        p("loader->_execTarget: Destination %s have delete query %s, deleting target " % (dstObj.cName, sql), "ii")
+        dstObj.execSP(sql)
         dstObj.close()
+        return
 
-def updateSourceTargetCompareLog (js):
+    if config.TO_TRUNCATE:
+        dstObj = connector(connDic=dstDict)
+        p("loader->_execTarget: Destination %s is trancating  " % (dstObj.cName), "ii")
+        dstObj.truncate()
+        dstObj.close()
+        return
+    return
+
+def _updateSourceTargetCompareLog (js):
     isRepoTblsExists  = False
     connUrl     = None
     connType    = None
@@ -148,7 +153,7 @@ def updateSourceTargetCompareLog (js):
     with open(os.path.join(config.DIR_DATA, js)) as jsonFile:
         jText = json.load(jsonFile, object_pairs_hook=OrderedDict)
 
-    p("loader->updateSourceTargetCompareLog: Loading from file %s COMPARE number of rows in Source vs target " % (str(js)),"i")
+    p("loader->_updateSourceTargetCompareLog: Loading from file %s COMPARE number of rows in Source vs target " % (str(js)),"i")
     for connType in config.CONN_URL:
         if "repo" in connType.lower():
             connUrl     = config.CONN_URL[connType]
@@ -212,11 +217,11 @@ def updateSourceTargetCompareLog (js):
                 logObj.close()
 
 # jMap, src, dst, sttDic, isSQL, merge, inc, seq
-def execLoading ( params ):
-    (src, dst, sttDic, isSql, merge, js, cProc, tProc) = params
-    p("loader->execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(src), str(dst)), "i")
+def _execLoading ( params ):
+    (srcDict, dstDict, mergeDict, sttDic, jFileName, cProc, tProc) = params
+    p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(srcDict[eConnValues.connName])), "i")
     # Managing Destination table
-    execTarget(dst=dst)
+    _execTarget(dstDict=dstDict)
 
     # True / false indication
     addSourceColumn = False
@@ -224,156 +229,155 @@ def execLoading ( params ):
         addSourceColumn = sttDic[config.STT_INTERNAL]
         del sttDic[config.STT_INTERNAL]
 
-    if "access" in src[0]:
-        accessFilePath = config.CONN_URL["access"][0] % (config.CONN_URL["access"][1] + str(js.split(".")[0] + ".accdb"))
-        srcObj = connector(connProp=src, connUrl=accessFilePath,isSql=isSql)
-    else:
-        srcObj = connector(connProp=src, isSql=isSql)
+    srcObj = connector(connDic=srcDict)
 
     # Check if source is same as target connection (only for merge option)
-    if  set([tuple(lst) for lst in src]) != set([tuple(lst) for lst in dst]):
-        # load all source data
-        sttDic = srcObj.structure(stt=sttDic,addSourceColumn=addSourceColumn)
-        # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
-        srcObj.toDB (dst=dst, stt=sttDic )
+    if  srcDict[eConnValues.connType] == dstDict[eConnValues.connType] and \
+        srcDict[eConnValues.connObj] == dstDict[eConnValues.connObj]:
+        p('loader->execLoading: TYPE: %s, SOURCE and TARGET %s object are identical.. will check if there is merge >>>>>' % (str(srcDict[eConnValues.connType]), str(srcDict[eConnValues.connObj])), "ii")
 
     else:
-        p('loader->execLoading: SOURCE %s and TARGET %s object are identical.. will check if there is merge >>>>>' % ( str(src), str(dst) ), "ii")
+        sttDic = srcObj.structure(stt=sttDic, addSourceColumn=addSourceColumn)
+        # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
+        srcObj.toDB(dstDict=dstDict, stt=sttDic)
 
-    if merge:
-        execMerge (dst=dst, merge=merge, sttDic=None, toCreate=True)
+    if mergeDict:
+        _execMerge (dstDict=dstDict, merge=merge, sttDic=None, toCreate=True)
 
     srcObj.close()
-    if config.LOGS_IN_DB : logsToDb( str(js)+":"+str(dst) )
+    if config.LOGS_IN_DB : logsToDb( str(jFileName)+":"+str(dstDict[eConnValues.connName]) )
 
-def loading (sourceList=None, destList=None):
-    # multiprocessing.freeze_support()
-    p('loader->loading: Start mapping data from Folder %s >>>>>' % (config.DIR_DATA), "i")
-    jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
-    for f in list(jsonFiles):
-        if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
-    toLoad      = True
-    loadedObject= []
+def _extractNodes (jText,jFileName,sourceList=None, destList=None):
     processList = []
+    loadedObject= []
+    cProc       = 0
+    for jMap in jText:
+        toLoad = True
+        sttDic = None
+        keys = [x.lower() for x in jMap.keys()]
 
-    for index, js in enumerate(jsonFiles):
-        with io.open(os.path.join(config.DIR_DATA, js), encoding="utf-8") as jsonFile:           #
-            jText = json.load(jsonFile, object_pairs_hook=OrderedDict)
+        sourceConn      = getDicKey(ePopEtlProp.src, keys)
+        queryConn       = getDicKey(ePopEtlProp.qry, keys)
+        targetConn      = getDicKey(ePopEtlProp.tar, keys)
+        mergeConn       = getDicKey(ePopEtlProp.mrg, keys)
+        seq             = getDicKey(ePopEtlProp.seq, keys)
+        stt             = getDicKey(ePopEtlProp.stt, keys)
+        targetMapping   = getDicKey(ePopEtlProp.map, keys)
 
-        processList = list([])
-        cProc       = 0
-        p("loader->loading: Start loading from file %s >>>>>>" %(str(js)), "i")
-        sTime = time.time()
-        for jMap in jText:
-            keys        = [x.lower() for x in jMap.keys()]
-            dst         = {'target', 'tar'}.intersection(set(keys))
-            src         = {'source','src'}.intersection(set(keys))
-            query       = {'query'}.intersection(set(keys))
-            mapping     = {'mapping', 'map'}.intersection(set(keys))
-            partition   = {'partition'}.intersection(set(keys))
-            merge       = {'merge'}.intersection(set(keys))
-            inc         = {'inc' , 'incremental'}.intersection(set(keys))
-            seq         = {'seq'}.intersection(set(keys))
-            stt         = {'stt', 'sttappend'}.intersection(set(keys))
-            sttDic      = None
+        partition       = getDicKey(ePopEtlProp.par,keys)
+        inc             = getDicKey(ePopEtlProp.inc,keys)
 
+        sttDic          = jMap[stt]  if stt and len (jMap[stt])>0 else None
 
-            # exists source/query AND destination OR destination and merge only
-            if len(dst)>0 and (len(src)>0 or len(query)>0) or ( len(merge)>0 and len(dst)>0 )  :
-                merge   = jMap[merge.pop()]     if len(merge)>0     else None
-                seq     = jMap[seq.pop()]       if len(seq)>0       else None
-                inc     = jMap[inc.pop()]       if len(inc)>0       else None
-                query   = query.pop()           if len (query)>0    else None
-                mapping = jMap[mapping.pop()]   if len(mapping)>0   else None
-                stt     = stt.pop()             if len(stt)>0       else None
-                sttDic  = jMap[stt]             if stt              else None
-                isSql   = True                  if query            else False
-                partition = jMap[partition.pop()] if len(partition) > 0 else None
+        srcDic = setDicConnValue(connJsonVal=jMap[sourceConn], extraConnVal=jFileName, isSource=True) if sourceConn else None
+        if queryConn and srcDic:
+            p("loader->_extractNodes: Found %s and %s, will use %s as source data " %(ePopEtlProp.src, ePopEtlProp.qry,ePopEtlProp.qry),"i" )
+            srcDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True)
 
-                # will use dst if exists. if not-> will use source if exists, if not will use query                                 dst->src->query
-                dst     = dst.pop() if len(dst)>0 else src.pop() if len(src)>0 else query
-                src     = src.pop() if len(src)>0 else query if query else dst
+        tarDic = setDicConnValue(connJsonVal=jMap[targetConn], extraConnVal=jFileName, isTarget=True) if targetConn else None
 
-                dst     = jMap[dst]
-                src     = jMap[src]
+        # if there is source and target or merge with source/target
+        if (srcDic and tarDic) or (mergeConn and (srcDic or tarDic)):
 
-                srcType = src[0]
-                srcName = src[1]
-                dstType = dst[0]
-                dstName = src[1] if len(dst) < 2 else dst[1]
-
-                #update sttDic with mapping -> if exists
-                if mapping:
-                    if sttDic:
-                        sttDicTemp = sttDic
-                        sttDic = OrderedDict()
-                        for t in mapping:
-                            if t in sttDicTemp:
-                                sttDic[t] = sttDicTemp[t]
-                                if "s" not in sttDic[t]:
-                                    sttDic[t]["s"] = mapping[t]
-                            else:
-                                sttDic[t] = {"s":mapping[t]}
-                        for t in sttDicTemp:
-                            if t not in sttDic: sttDic[t] = sttDicTemp[t]
-                    else:
-                        sttDic = OrderedDict()
-                        for t in mapping:
-                            sttDic[t] = {"s": mapping[t]}
-
-                sttDic = sttDic if sttDic and len(sttDic)>0 else None
-                # Update sttDic
-                if sttDic:  sttDic[config.STT_INTERNAL] = True if stt and "append" in stt and not mapping else False
-
-
-                toLoad  = True if not sourceList or (sourceList and srcName in (sourceList)) else False
-                toLoad  = True if not destList or (destList and dstName in (destList)) else False
-
-                if toLoad:
-                    p('loader->loading: Loading source type %s, source name %s into destination type: %s, destination name %s >>>>>' % (str(srcType), srcName, str(dstType), dstName), "ii")
-                    # if partition --> change to all partitions
-                    # update list of data to process:
-                    if partition:
-                        if inc:
-                            p('loader->loading: Cannot have incremental and partiton loading methods.. will use partiton method >>>>>' , "ii")
-                        if not query or len(query)<1:
-                            newSqlList = []
-                            newSqlList = appendPartitions (src,  partition)
-                            for newSql in newSqlList:
-                                processList.append( ([srcType,newSqlList], dst, sttDic, True, merge,js, cProc) )
-                                cProc +=1
-                            loadedObject.append ("PARTITION "+dstName+" !!!! ")
+            # update sttDic with mapping -> if exists
+            if tarDic:
+                if sttDic:
+                    sttDicTemp = sttDic
+                    sttDic = OrderedDict()
+                    for t in targetMapping:
+                        if t in sttDicTemp:
+                            sttDic[t] = sttDicTemp[t]
+                            if "s" not in sttDic[t]:
+                                sttDic[t]["s"] = targetMapping[t]
                         else:
-                            p('loader->loading: Cannot have partition with query as source.. will use query as is, sql: %s >>>>>' % (str(srcName)), "ii")
-                            processList.append ( (src, dst, sttDic, isSql, merge,js, cProc) )
-                            cProc+=1
+                            sttDic[t] = {"s": targetMapping[t]}
+                    for t in sttDicTemp:
+                        if t not in sttDic: sttDic[t] = sttDicTemp[t]
+                else:
+                    sttDic = OrderedDict()
+                    for t in targetMapping:
+                        sttDic[t] = {"s": targetMapping[t]}
+
+            sttDic = sttDic if sttDic and len(sttDic) > 0 else None
+            # Update sttDic
+            if sttDic:
+                sttDic[config.STT_INTERNAL] = True if ePopEtlProp.sttA == stt.lower() and not targetMapping else False
+
+            if sourceList:
+                sourceList = [x.lower() for x in sourceList]
+                toLoad = True if srcDic[eConnValues.connName] in sourceList or srcDic[eConnValues.connObj] in sourceList else False
+            if destList:
+                destList = [x.lower() for x in destList]
+                toLoad = True if tarDic[eConnValues.connName] in destList or tarDic[eConnValues.connObj] in destList else False
+
+            if toLoad:
+                p('loader->_extractNodes: Loading source type %s, source name %s into destination type: %s, destination name %s >>>>>' % (str(srcDic[ eConnValues.connType ]), srcDic[ eConnValues.connName ], str(dstDic[ eConnValues.connType ]), dstDic[ eConnValues.connName ]), "ii")
+                # if partition --> change to all partitions
+                # update list of data to process:
+                if partition:
+                    if inc:
+                        p('loader->_extractNodes: Cannot have incremental and partiton loading methods.. will use partiton method >>>>>',"ii")
+                    if not queryConn or len(queryConn) < 1:
+                        newSqlList = _appendPartitions(srcDic, partition)
+                        for newSql in newSqlList:
+                            cProc += 1
+                            tmpParDic = setDicConnValue (connJsonVal=None,
+                                                         connType=srcDic [ eConnValues.connType ],
+                                                         connName=srcDic [ eConnValues.connName ],
+                                                         connObj=newSql,
+                                                         connFilter=None,
+                                                         connUrl=None, extraConnVal=None, isSql=True,
+                                                         isTarget=False, isSource=True)
+
+                            processList.append( (tmpParDic, tarDic, mergeConn, sttDic, jFileName, cProc) )
+
+                        loadedObject.append("P: %s; " %tarDic[ eConnValues.connObj ])
                     else:
-                        processList.append ( (src, dst, sttDic, isSql, merge,js, cProc) )
-                        cProc+=1
-                    loadedObject.append (dstName)
-
-            else:
-                p("loader->loading: There is nothing to do >>>>>>>>>>>>>>", "i")
-
-            eTime = (time.time() - sTime) / 60          # in minutes
+                        cProc += 1
+                        p('loader->_extractNodes: Cannot have partition with query as source.. will use query as is, sql: %s >>>>>' % (str(srcDic [ eConnValues.connObj ])), "ii")
+                        processList.append( (srcDic, tarDic, mergeConn, sttDic, jFileName, cProc) )
+                else:
+                    cProc += 1
+                    processList.append( (srcDic, tarDic, mergeConn, sttDic,  jFileName, cProc) )
+                loadedObject.append("%s; " %(tarDic [ eConnValues.connObj ]))
+        else:
+            p("loader->_extractNodes: There is nothing to do >>>>>>>>>>>>>>", "i")
 
         # Strat runing all processes per file
-        numOfProcesses = len (processList) if len (processList) < config.NUM_OF_PROCESSES else config.NUM_OF_PROCESSES
+        numOfProcesses = len(processList) if len(processList) < config.NUM_OF_PROCESSES else config.NUM_OF_PROCESSES
 
+        # Add total processes to execute
         for i, itemP in enumerate(processList):
             processList[i] = itemP + (cProc,)
 
-        if numOfProcesses >1:
-            proc = multiprocessing.Pool(config.NUM_OF_PROCESSES).map(execLoading,processList )
-        else:
-            if numOfProcesses >0:
+        if numOfProcesses > 1:
+            proc = multiprocessing.Pool(config.NUM_OF_PROCESSES).map(_execLoading, processList)
+        elif numOfProcesses > 0:
                 for etl in processList:
-                    execLoading ( etl )
+                    _execLoading(etl)
 
-        p("loader->loading: Finish loading from file %s >>>>>>" % (str(js)), "i")
-        if config.LOGS_IN_DB: logsToDb()
-        if config.LOGS_COUNT_SRC_DST: updateSourceTargetCompareLog (js)
+        return loadedObject
 
+def trasnfer (dicObj=None, sourceList=None, destList=None):
+    loadedObject = []
+    if dicObj:
+        dicObj = list (dicObj) if isinstance(dicObj, (dict,OrderedDict)) else dicObj
+        p('loader->loading: loading from Dictionary >>>>>' , "ii")
+        loadedObject = _extractNodes(jText=dicObj, jFileName='', sourceList=sourceList, destList=destList)
+    else:
+        jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
+        for f in list(jsonFiles):
+            if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
+        for index, js in enumerate(jsonFiles):
+            with io.open(os.path.join(config.DIR_DATA, js), encoding="utf-8") as jsonFile:           #
+                jText = json.load(jsonFile, object_pairs_hook=OrderedDict)
+
+            p("loader->loading: Start loading from file %s, folder: %s >>>>> >>>>>>" %(str(js), str(config.DIR_DATA)), "i")
+            loadedObject = _extractNodes(jText, jFileName=js, sourceList=sourceList, destList=destList)
+            p("loader->loading: Finish loading from file %s >>>>>>" %(str(js)), "i")
+            if config.LOGS_COUNT_SRC_DST: _updateSourceTargetCompareLog(js)
+
+    if config.LOGS_IN_DB: logsToDb()
     p("loader->loading: FINISH LOADING, Loader into : " + str (loadedObject), "i")
 
 if __name__ == '__main__':

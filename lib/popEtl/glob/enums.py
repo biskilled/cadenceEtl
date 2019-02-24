@@ -24,8 +24,33 @@ class eConnValues (object):
     connFilter      = "filter"
     connIsTar       = "isTarget"
     connIsSrc       = "isSource"
+    partitionCol    = "column"
+    partitionAgg    = "agg"
+    partitionStart  = "start"
 
+class ePopEtlProp (object):
+    src = "source"
+    tar = "target"
+    qry = "query"
+    mrg = "merge"
+    add = "addSrcColumns"
+    seq = "seq"
+    stt = "stt"
+    sttA= "sttappend",
+    map = "mapping"
+    col = "column",
+    par = "partition",
+    inc = "incremental"
 
-
-
-print (eDbType.isExsists (prop="SqlServer"))
+    dicOfProp = {
+        src : ["source","src"],
+        tar : ["taregt","tar"],
+        qry : ["query"],
+        mrg : ["merge"],
+        seq : ["seq"],
+        stt : ['stt', 'sttappend'],
+        map : ['mapping', 'map'],
+        col : ['columns', 'column', 'col'],
+        par : ['partition'],
+        inc : ['inc', 'incremental']
+    }

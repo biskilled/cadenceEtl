@@ -291,7 +291,7 @@ class cnDb (object):
                 targetObj.close()
         return
 
-    def dbIter(self, tarSQL, dst, fnDic):
+    def dbIter(self, tarSQL, dstDict, fnDic):
         numOfRows = 0
         iCnt      = 0
         pool = mpool.ThreadPool(config.NUM_OF_LOADING_THREAD)
@@ -323,8 +323,8 @@ class cnDb (object):
             if not results or len(results)<1:
                 break
             numOfRows+=len(results)
-            p('db->Iter: Loading total of %s rows , target :%s ' % (str(numOfRows), str(dst[1])), "ii")
-            pool.apply_async(func=self.toTarget,args=(results, tarSQL, dst, fnDic, numOfRows))  #callback=log_result
+            p('db->Iter: Loading total of %s rows , target :%s ' % (str(numOfRows), str(dstDict[eConnValues.connObj] )), "ii")
+            pool.apply_async(func=self.toTarget,args=(results, tarSQL, dstDict, fnDic, numOfRows))  #callback=log_result
             if iCnt < config.NUM_OF_LOADING_THREAD:
                 iCnt+=1
             else:
@@ -336,11 +336,11 @@ class cnDb (object):
             pool.close()
             pool.join()
 
-    def toDB (self, dst, tarL, srcL, fnDic):
-        srcSql  = self.cSQL
+    def toDB (self, dstDict, tarL, srcL, fnDic):
+        srcSql          = self.cSQL
+        TargetTableType = dstDict [ eConnValues.connType ]
+        TargetTableName = dstDict [ eConnValues.connName ]
 
-        TargetTableType = dst[0]
-        TargetTableName = dst[1]
         tarSQL  = "INSERT INTO "+TargetTableName+" "
 
         # there is column mapping or function mapping
@@ -385,7 +385,7 @@ class cnDb (object):
             if len (tarL)<1:
                 tarSQL += "VALUES (" + ",".join(["?" for x in range(totalColumnInSource)]) + ")"
 
-            self.dbIter(tarSQL=tarSQL, dst=dst, fnDic=fnDic)
+            self.dbIter(tarSQL=tarSQL, dstDict=dstDict, fnDic=fnDic)
 
         except Exception as e:
             p("db->toDB: ERROR Exectuging query: %s, type: %s >>>>>>" % (srcSql, self.cType) , "e")

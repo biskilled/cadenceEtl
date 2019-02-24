@@ -79,9 +79,9 @@ class connector ():
         p ("CONNECTOR->execSP: schema:%s, name: %s, executing query %s " %(self.cType, self.cName,sqlQuery) ,"ii")
         return self.objClass.execSP (sqlQuery)
 
-    def toDB(self, dst, stt=None):
-        dstType = dst[0]
-        dstName = dst[1]
+    def toDB(self, dstDict, stt=None):
+        dstType = dstDict [ eConnValues.connType ]
+        dstName = dstDict [ eConnValues.connObj ]
         p("CONNECTOR->toDB: Transfer data from %s, type: %s to %s, type: %s " % (self.cName,self.cType, dstName, dstType), "ii")
 
         tarL  = []
@@ -107,7 +107,7 @@ class connector ():
                         if tc in colList:
                             newKey.append ( j )
                     fnDic[tuple(newKey)] = (cnt, colFun, toEval)
-        return self.objClass.toDB(dst=dst, tarL=tarL, srcL=srcL, fnDic=fnDic)
+        return self.objClass.toDB(dstDict=dstDict, tarL=tarL, srcL=srcL, fnDic=fnDic)
 
     def sqlTargetMapping(self):
         p("CONNECTOR->sqlTargetMapping: Update cColumns and cColumnsTDic, type %s, name: %s " % (self.cType,self.cName), "ii")

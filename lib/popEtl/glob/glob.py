@@ -22,7 +22,7 @@ import datetime
 import logging
 from collections import OrderedDict
 
-from popEtl.glob.enums import eConnValues, eDbType
+from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp
 #logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 # filename='app.log', filemode='w',
@@ -139,7 +139,7 @@ def decodeStrPython2Or3 (sObj, un=True):
         else:
             return str(sObj).decode("windows-1255")
 
-def setDicConnValue (connJsonVal, connType=None, connName=None, connObj=None, connFilter=None, connUrl=None, extraConnVal=None, isSql=False, isTarget=False, isSource=False):
+def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=None, connFilter=None, connUrl=None, extraConnVal=None, isSql=False, isTarget=False, isSource=False):
     retVal = {eConnValues.connName:connName,
               eConnValues.connType:connType.lower(),
               eConnValues.connUrl:connUrl,
@@ -199,3 +199,17 @@ def setDicConnValue (connJsonVal, connType=None, connName=None, connObj=None, co
         else:
             p("glob->_setDicConnValue: Connection params are not set: %s " % (str(retVal)), "e")
         return None
+
+def getDicKey (etlProp, allProp):
+    if etlProp in ePopEtlProp.dicOfProp:
+        etlProps = ePopEtlProp.dicOfProp[ etlProp ]
+
+        filterSet = set (etlProps)
+        allSet    = set (allProp)
+
+        isExists = filterSet.intersection(allSet)
+
+        if len (isExists) > 0:
+            return isExists.pop()
+    return None
+
