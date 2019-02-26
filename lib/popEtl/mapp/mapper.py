@@ -206,17 +206,12 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
             tarObj = connDic[eConnValues.connObj] if connDic else None
             dicProp[ePopEtlProp.tar] = connector(connDic = connDic)
 
-        # merge -> Using target connection type  with new table name
-        if mergeConn:
-            connDic = setDicConnValue(connJsonVal=jMap[mergeConn], connObj=tarObj, extraConnVal=jFileName,isTarget=True)
-            dicProp[ePopEtlProp.mrg] = connector(connDic = connDic)
-
         # create table with sequence as fisrt column -> apply on target only ! (if there is merge - will use merge option, without adding identity
         if seqFiles:
             # check sequence dictionay
             dicProp[ePopEtlProp.seq] = checkSequence(jMap[seqFiles])
             # add property - if merge is appear
-            if ePopEtlProp.mrg in dicProp and ePopEtlProp.seq in dicProp and len(dicProp[ePopEtlProp.seq]) > 0:
+            if mergeConn and ePopEtlProp.seq in dicProp and len(dicProp[ePopEtlProp.seq]) > 0:
                 dicProp[ePopEtlProp.seq][ePopEtlProp.mrg] = True
 
         # Check stt (source to target) --> if needs to add columns or new mapping

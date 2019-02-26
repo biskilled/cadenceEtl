@@ -123,7 +123,9 @@ def decodeStrPython2Or3 (sObj, un=True):
         else:
             return str(sObj).decode("windows-1255")
 
-def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=None, connFilter=None, connUrl=None, extraConnVal=None, isSql=False, isTarget=False, isSource=False):
+def setDicConnValue (connJsonVal=None, connType=None, connName=None,
+                     connObj=None, connFilter=None, connUrl=None, extraConnVal=None,
+                     isSql=False, isTarget=False, isSource=False):
     retVal = {eConnValues.connName:connName,
               eConnValues.connType:connType.lower() if connType else None ,
               eConnValues.connUrl:connUrl,
@@ -145,12 +147,14 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=Non
             if len (connJsonVal) == 3:
                 retVal[eConnValues.connFilter]= connJsonVal[2]
         else:
-            p("glob->_setDicConnValue: Connection paramter is not valid %s must have 1,2 or 3 params: %s " %(str(connJsonVal), "e"))
-            return None
+            err = "glob->_setDicConnValue: Connection paramter is not valid %s must have 1,2 or 3 params: %s " %(str(connJsonVal))
+            p(err, "e")
+            raise Exception(err)
 
         if retVal[eConnValues.connName] is None:
-            p("glob->_setDicConnValue: Connection Name is not defined: %s " %(connJsonVal))
-            return None
+            err = "glob->_setDicConnValue: Connection Name is not defined: %s " %(connJsonVal)
+            p(err, "e")
+            raise Exception(err)
 
         if retVal[eConnValues.connUrl] is None:
             if retVal[eConnValues.connName] in config.CONN_URL:
@@ -162,8 +166,9 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=Non
                     if eConnValues.connUrl in connUrl:
                         retVal[eConnValues.connUrl] = connUrl[eConnValues.connUrl]
             else:
-                p("glob->_setDicConnValue: Connection Name is not defined in CONN_URL config. define names are : %s  "  %(str(list(config.CONN_URL.keys()))))
-                return None
+                err = "glob->_setDicConnValue: Connection Name %s is not defined in CONN_URL config. define names are : %s  "  %(retVal[eConnValues.connName], str(list(config.CONN_URL.keys())))
+                p(err, "e")
+                raise Exception(err)
         # remove number from connection type in case we used it in config.CONN_URL
         # sample : sql1 - will be rename to sql as a type
         retVal[eConnValues.connType] = ''.join([i for i in retVal[eConnValues.connType].lower() if not i.isdigit()])
@@ -180,9 +185,10 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=Non
             retVal[eConnValues.connUrl] is not None:
                 p ("glob->_setDicConnValue: Connection params: %s " %(str(retVal)),"ii")
                 return retVal
-        else:
-            p("glob->_setDicConnValue: Connection params are not set: %s " % (str(retVal)), "e")
-        return None
+
+        err = "glob->_setDicConnValue: Connection params are not set: %s " % (str(retVal))
+        p(err, "e")
+        raise Exception(err)
 
 def getDicKey (etlProp, allProp):
     etlProp = str(etlProp).lower() if etlProp else ''

@@ -23,6 +23,7 @@ class eConnValues (object):
     connIsSql       = "isSql"
     connFilter      = "filter"
     connIsTar       = "isTarget"
+    connIsMerge     = "isMerge"
     connIsSrc       = "isSource"
     partitionCol    = "column"
     partitionAgg    = "agg"

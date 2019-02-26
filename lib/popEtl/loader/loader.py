@@ -75,13 +75,13 @@ def addIncemenral (inc, isSQL, srcObj, srcMapping=None):
 
 
 # Will merge table with connection in source object
-def _execMerge (dstDict, merge, sttDic, toCreate=True):
+def _execMerge (dstDict, mergeConn, sttDic, toCreate=True):
     mergeKeys = None
-    if isinstance( merge , (list,tuple) ):
-        mergeTable = merge[0]
-        mergeKeys  = merge[1]
+    if isinstance( mergeConn , (list,tuple) ):
+        mergeTable = mergeConn[0]
+        mergeKeys  = mergeConn[1]
     else:
-        mergeTable = merge
+        mergeTable = mergeConn
 
     dstObj = connector(connDic=dstDict)
     # create target table same as source one
@@ -218,7 +218,7 @@ def _updateSourceTargetCompareLog (js):
 
 # jMap, src, dst, sttDic, isSQL, merge, inc, seq
 def _execLoading ( params ):
-    (srcDict, dstDict, mergeDict, sttDic, jFileName, cProc, tProc) = params
+    (srcDict, dstDict, mergeConn, sttDic, jFileName, cProc, tProc) = params
     p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(srcDict[eConnValues.connName])), "i")
     # Managing Destination table
     _execTarget(dstDict=dstDict)
@@ -241,8 +241,8 @@ def _execLoading ( params ):
         # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
         srcObj.toDB(dstDict=dstDict, stt=sttDic)
 
-    if mergeDict:
-        _execMerge (dstDict=dstDict, merge=merge, sttDic=None, toCreate=True)
+    if mergeConn:
+        _execMerge (dstDict=dstDict, mergeConn=mergeConn, sttDic=None, toCreate=True)
 
     srcObj.close()
     if config.LOGS_IN_DB : logsToDb( str(jFileName)+":"+str(dstDict[eConnValues.connName]) )
@@ -268,6 +268,7 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
         inc             = getDicKey(ePopEtlProp.inc,keys)
 
         sttDic          = jMap[stt]  if stt and len (jMap[stt])>0 else None
+        mergeConn       = jMap[mergeConn]  if mergeConn and len (jMap[mergeConn])>0 else None
 
         srcDic = setDicConnValue(connJsonVal=jMap[sourceConn], extraConnVal=jFileName, isSource=True) if sourceConn else None
         if queryConn and srcDic:
