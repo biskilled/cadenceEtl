@@ -348,19 +348,20 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
             p("loader->_extractNodes: There is nothing to do >>>>>>>>>>>>>>", "i")
 
         # Strat runing all processes per file
-        numOfProcesses = len(processList) if len(processList) < config.NUM_OF_PROCESSES else config.NUM_OF_PROCESSES
 
-        # Add total processes to execute
-        for i, itemP in enumerate(processList):
-            processList[i] = itemP + (cProc,)
+    numOfProcesses = len(processList) if len(processList) < config.NUM_OF_PROCESSES else config.NUM_OF_PROCESSES
 
-        if numOfProcesses > 1:
-            proc = multiprocessing.Pool(config.NUM_OF_PROCESSES).map(_execLoading, processList)
-        elif numOfProcesses > 0:
-                for etl in processList:
-                    _execLoading(etl)
+    # Add total processes to execute
+    for i, itemP in enumerate(processList):
+        processList[i] = itemP + (cProc,)
 
-        return loadedObject
+    if numOfProcesses > 1:
+        proc = multiprocessing.Pool(config.NUM_OF_PROCESSES).map(_execLoading, processList)
+    elif numOfProcesses > 0:
+            for etl in processList:
+                _execLoading(etl)
+
+    return loadedObject
 
 def trasnfer (dicObj=None, sourceList=None, destList=None):
     loadedObject = []

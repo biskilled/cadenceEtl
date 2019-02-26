@@ -213,10 +213,11 @@ def logsToDb (js=None):
         #config.LOGS_ARR_I = []
 
 def OLAP_Process(serverName,dbName, cubes=[], dims=[], fullProcess=True):
-    import sys
-    sys.path.append(r'../3rdPart/clrmodule.dll')
+    import sys, os
+    print (sys.path)
+    sys.path.append(os.path.abspath(r'../../3rdPart/clrmodule.dll'))
     import clr
-    clr.AddReference(r"../3rdPart/Microsoft.AnalysisServices.DLL")
+    clr.AddReference(os.path.abspath(r"../../3rdPart/Microsoft.AnalysisServices.DLL"))
 
     from Microsoft.AnalysisServices import Server
     from Microsoft.AnalysisServices import ProcessType
