@@ -22,51 +22,35 @@ import datetime
 import logging
 from collections import OrderedDict
 
-from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp
-#logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
-logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-# filename='app.log', filemode='w',
-#logging.warning('This will get logged to a file')
-
-
+from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp, isDbType
 from  popEtl.config import config
 
-def get_logger(
-        LOG_FORMAT     = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-        LOG_NAME       = '',
-        LOG_DIR        = None,
-        LOG_FILE_INFO  = 'file.log',
-        LOG_FILE_ERROR = 'file.err'):
+def getLogger (
+    LOG_FORMAT     = '%(asctime)s %(levelname)s %(message)s',
+    LOG_DIR        = None,
+    LOG_FILE       = 'file'
+    ):
 
-    LOG_FILE_INFO = os.path.join (LOG_DIR, LOG_FILE_INFO) if LOG_DIR else None
-    LOG_FILE_INFO = os.path.join(LOG_DIR, LOG_FILE_INFO) if LOG_DIR else None
+    #logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+    logFormatter= logging.Formatter(LOG_FORMAT)
+    logg  = logging.getLogger()
 
-    log           = logging.getLogger(LOG_NAME)
-    log_formatter = logging.Formatter(LOG_FORMAT)
+    if LOG_DIR:
+        fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_DIR, LOG_FILE))
+        fileHandler.setFormatter(logFormatter)
+        logg.addHandler(fileHandler)
 
-    # comment this to suppress console output
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(log_formatter)
-    log.addHandler(stream_handler)
+    consoleHandler = logging.StreamHandler(sys.stdout)
+    consoleHandler.setFormatter(logFormatter)
+    logg.addHandler(consoleHandler)
 
-    if LOG_FILE_INFO and len(LOG_FILE_INFO)>0:
-        file_handler_info = logging.FileHandler(LOG_FILE_INFO, mode='w')
-        file_handler_info.setFormatter(log_formatter)
-        file_handler_info.setLevel(logging.INFO)
-        log.addHandler(file_handler_info)
+    logg.setLevel(logging.DEBUG)
 
-    if LOG_FILE_ERROR and len (LOG_FILE_ERROR)>0:
-        file_handler_error = logging.FileHandler(LOG_FILE_ERROR, mode='w')
-        file_handler_error.setFormatter(log_formatter)
-        file_handler_error.setLevel(logging.ERROR)
-        log.addHandler(file_handler_error)
+    return logg
 
-    log.setLevel(logging.INFO)
 
-    return log
-
+logg = getLogger ()
 def p(msg, ind='I'):
-    logg = get_logger(LOG_DIR=None)
     ind = ind.upper()
     indPrint = {'E': 'ERROR>> ',
                 'I': 'Information>> ',
@@ -89,13 +73,13 @@ def p(msg, ind='I'):
         if config.LOGS_PRINT and ind in allowToPrint:
             timeStr = localTime.strftime("%d/%m/%Y %H:%M:%S")
             if 'III' in ind:
-                logg.debug("\r" + indPrint[ind] + msg)
+                logg.debug("\r %s %s" %(indPrint[ind], msg))
             elif 'II' in ind:
-                logg.info(indPrint[ind] + msg)
+                logg.info("%s %s" %(indPrint[ind], msg))
             elif 'I' in ind:
-                logg.warning(indPrint[ind] + msg)
+                logg.warning("%s %s" %(indPrint[ind], msg))
             else:
-                logg.error(indPrint[ind] + msg)
+                logg.error(str(indPrint[ind]) + str(msg))
 
 def setQueryWithParams(query):
     qRet = ""
@@ -141,7 +125,7 @@ def decodeStrPython2Or3 (sObj, un=True):
 
 def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=None, connFilter=None, connUrl=None, extraConnVal=None, isSql=False, isTarget=False, isSource=False):
     retVal = {eConnValues.connName:connName,
-              eConnValues.connType:connType.lower(),
+              eConnValues.connType:connType.lower() if connType else None ,
               eConnValues.connUrl:connUrl,
               eConnValues.connUrlExParams:extraConnVal,
               eConnValues.connObj:connObj,
@@ -188,7 +172,7 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=Non
         if eDbType.ACCESS == retVal[eConnValues.connType] and retVal[eConnValues.connUrlExParams] is not None:
             retVal[eConnValues.connUrl] = retVal[eConnValues.connUrl][0] % (retVal[eConnValues.connUrl][1] + str(retVal[eConnValues.connUrlExParams].split(".")[0] + ".accdb"))
 
-        retVal[eConnValues.connType] = eDbType.isExsists( retVal[eConnValues.connType] )
+        retVal[eConnValues.connType] = isDbType( retVal[eConnValues.connType] )
 
         if  retVal[eConnValues.connName] is not None and \
             retVal[eConnValues.connType] is not None and \
@@ -201,12 +185,12 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None, connObj=Non
         return None
 
 def getDicKey (etlProp, allProp):
+    etlProp = str(etlProp).lower() if etlProp else ''
     if etlProp in ePopEtlProp.dicOfProp:
         etlProps = ePopEtlProp.dicOfProp[ etlProp ]
 
         filterSet = set (etlProps)
-        allSet    = set (allProp)
-
+        allSet    = set ([str(x).lower() for x in allProp])
         isExists = filterSet.intersection(allSet)
 
         if len (isExists) > 0:

@@ -191,7 +191,7 @@ def logsToDb (js=None):
         totalErrRows = len (config.LOGS_ARR_E)
         totalInfoRows = len(config.LOGS_ARR_I)
 
-        logObj = cnDb (connObject="logs", conType=connType, connUrl=connUrl)
+        logObj = cnDb (connName="logs", connType=connType, connUrl=connUrl)
         for tbl in config.LOGS_DB_TBL:
             fList   = config.LOGS_DB_TBL[tbl]["f"]
             logType = config.LOGS_DB_TBL[tbl]["t"]

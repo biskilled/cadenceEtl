@@ -109,12 +109,12 @@ def mapper (dicProp):
     toCreate    = []
 
     #update parmaters
-    isMerge         = dicProp['merge'] if 'merge'               in prop else None
-    stt             = dicProp['stt']  if 'stt'                  in prop else None
-    seq             = checkSequence (dicProp['seq']) if 'seq'   in prop else None
-    isTarget        = dicProp['target'] if 'target'             in  prop else None
-    isSource        = dicProp['source'] if 'source'             in  prop else None
-    addSourceColumn = dicProp['addSrcColumns'] if 'addSrcColumns' in prop else False
+    isMerge         = dicProp[ePopEtlProp.mrg] if ePopEtlProp.mrg in prop else None
+    stt             = dicProp[ePopEtlProp.stt] if ePopEtlProp.stt in prop else None
+    seq             = checkSequence (dicProp[ePopEtlProp.seq]) if ePopEtlProp.seq in prop else None
+    isTarget        = dicProp[ePopEtlProp.tar] if ePopEtlProp.tar in prop else None
+    isSource        = dicProp[ePopEtlProp.src] if ePopEtlProp.src in prop else None
+    addSourceColumn = dicProp[ePopEtlProp.add] if ePopEtlProp.add in prop else False
 
     # There is Target mapping
     if not isTarget:
@@ -169,9 +169,8 @@ def mapper (dicProp):
         stt = isTarget.structure(stt=stt, addSourceColumn=addSourceColumn)
         isMerge.create (stt=stt,seq=seq)
 
-def extractNodes (jText,jFileName,sourceList=None, destList=None):
+def _extractNodes (jText,jFileName,sourceList=None, destList=None):
     sttDic = OrderedDict()
-
     for jMap in jText:
         toLoad = True
         dicProp = {}
@@ -197,14 +196,13 @@ def extractNodes (jText,jFileName,sourceList=None, destList=None):
 
         if queryConn:
             connDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
-            srcObj = connDic[eConnValues.connObj] if connDic else None
             dicProp[ePopEtlProp.src] = connector(connDic = connDic)
             if sourceConn:
-                p("mappr->extractNodes: There is query and source, will be QUERY sed as SOURCE object >>>>>> ", "ii")
+                p("mappr->_extractNodes: There is query and source, will be QUERY sed as SOURCE object >>>>>> ", "ii")
 
         # target -> Connection object
         if targetConn:
-            connDic = setDicConnValue(connJsonVal=jMap[targetConn], connObj=srcObj, extraConnVal=jFileName,  isTarget=True)
+            connDic = setDicConnValue(connJsonVal=jMap[targetConn], connObj=tarObj, extraConnVal=jFileName,  isTarget=True)
             tarObj = connDic[eConnValues.connObj] if connDic else None
             dicProp[ePopEtlProp.tar] = connector(connDic = connDic)
 
@@ -276,7 +274,7 @@ def extractNodes (jText,jFileName,sourceList=None, destList=None):
             toLoad = True if ePopEtlProp.tar in dicProp and dicProp[ePopEtlProp.tar].cName in destList else False
 
         if toLoad:
-            mapper(dicProp)
+            mapper(dicProp=dicProp)
         else:
             p("mappr->loadJson: Src %s, dst %s , mapping %s not matched >>>> nothing to map " % (
             str(sourceList), str(destList), str(dicProp)), "i")
@@ -288,7 +286,7 @@ def model (dicObj=None, sourceList=None, destList=None):
     if dicObj:
         dicObj = list (dicObj) if isinstance(dicObj, (dict,OrderedDict)) else dicObj
         p('mapper->model: loading from Dictionary  >>>>>' , "ii")
-        extractNodes(jText=dicObj, jFileName='', sourceList=sourceList, destList=destList)
+        _extractNodes(jText=dicObj, jFileName='', sourceList=sourceList, destList=destList)
     else:
         jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
         for f in list (jsonFiles):
@@ -298,7 +296,7 @@ def model (dicObj=None, sourceList=None, destList=None):
             with io.open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:
                 p('mapper->model: start modeling from file  %s, folder: %s >>>>>' % (js, str(config.DIR_DATA)), "ii")
                 jText = json.load(jsonFile , object_pairs_hook=OrderedDict)
-                extractNodes(jText=jText, jFileName=js, sourceList=sourceList, destList=destList)
+                _extractNodes(jText=jText, jFileName=js, sourceList=sourceList, destList=destList)
 
     if config.LOGS_IN_DB: logsToDb()
     p ('mapper->model: FINISH DESIGN >>>>>', "i" )

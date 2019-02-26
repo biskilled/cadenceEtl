@@ -1,17 +1,17 @@
 class eDbType (object):
-    SQL     = "sqlserver"
+    SQL     = "sql"
     ORACLE  = "oracle"
     VERTIVA = "vertica"
     ACCESS  = "access"
     MYSQL   = "mysql"
     FILE    = "file"
 
-    def isExsists (prop):
-        dicClass = eDbType.__dict__
-        for p in dicClass:
-            if isinstance(dicClass[p], str) and dicClass[p].lower() == prop.lower():
-                return prop.lower()
-        return None
+def isDbType (prop):
+    dicClass = eDbType.__dict__
+    for p in dicClass:
+        if isinstance(dicClass[p], str) and dicClass[p].lower() == prop.lower():
+            return prop.lower()
+    return None
 
 
 class eConnValues (object):
@@ -36,15 +36,15 @@ class ePopEtlProp (object):
     add = "addSrcColumns"
     seq = "seq"
     stt = "stt"
-    sttA= "sttappend",
+    sttA= "sttappend"
     map = "mapping"
-    col = "column",
-    par = "partition",
+    col = "column"
+    par = "partition"
     inc = "incremental"
 
     dicOfProp = {
         src : ["source","src"],
-        tar : ["taregt","tar"],
+        tar : ["target","tar"],
         qry : ["query"],
         mrg : ["merge"],
         seq : ["seq"],

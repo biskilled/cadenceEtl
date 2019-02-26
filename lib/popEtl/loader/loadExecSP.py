@@ -111,7 +111,7 @@ def __execSql ( params ):
                 p ("loadExecSP->__execSql Finish Executing : %s " %line, "i")
 
     # open connection
-    db = cnDb (connObject='SP', conType=connType, connUrl=connString)
+    db = cnDb (connType=connType, connUrl=connString)
 
     if str(sqlScript).endswith(".sql") and os.path.isfile(sqlScript):
         with io.open(sqlScript, 'r',  encoding=config.FILE_ENCODING) as inp:

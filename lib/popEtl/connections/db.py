@@ -25,7 +25,7 @@ from collections import OrderedDict
 from popEtl.config import config
 from popEtl.glob.glob import p, setQueryWithParams, decodeStrPython2Or3
 from popEtl.glob.loaderFunctions import *
-from popEtl.glob.enums import eDbType, eConnValues
+from popEtl.glob.enums import eDbType, eConnValues, isDbType
 import popEtl.connections.dbQueries as queries
 import popEtl.connections.dbQueryParser as queryParser
 
@@ -47,15 +47,15 @@ if eDbType.ORACLE in aConnection  :
 
 
 class cnDb (object):
-    def __init__ (self, connDic):
-        self.cIsSql     = connDic [ eConnValues.connIsSql]
-        self.cName      = setQueryWithParams ( connDic [ eConnValues.connObj] )
+    def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connFilter=None):
+        self.cIsSql     = connDic [ eConnValues.connIsSql] if connDic else None
+        self.cName      = setQueryWithParams ( connDic [ eConnValues.connObj] ) if connDic else connName
         self.cSchema    = None
-        self.cType      = connDic [ eConnValues.connType]
+        self.cType      = connDic [ eConnValues.connType] if connDic else connType
 
         if self.cIsSql:
             self.cSQL = self.cName
-        else:
+        elif self.cName:
             srcPre, srcPost = config.DATA_TYPE['colFrame'][self.cType]
             tblName = self.cName.split(".")
             if len(tblName) == 1:
@@ -69,11 +69,20 @@ class cnDb (object):
         self.cColumns   = []
         # Will be update if there is a query as source and mapping in query as well (select x as yy.....
         self.cColumnsTDic= None
-        self.cUrl       = connDic [ eConnValues.connUrl ]
-        self.cWhere     = connDic [ eConnValues.connFilter ]
+        self.cUrl       = connDic [ eConnValues.connUrl ] if connDic else connUrl
+        self.cWhere     = connDic [ eConnValues.connFilter ] if connDic else connFilter
         self.cColoumnAs = True
 
+        if not self.cType or not isDbType(self.cType):
+            p ("Connection type is not valid: %s, use connection from config file" %(str(self.cType)) )
+            return
+        if  not self.cUrl:
+            p("Connection URL is not exists, use valid URL conn" )
+            return
+
         p("db->init: DB type: %s, table: %s, url: %s" % (self.cType, self.cName, str(self.cUrl)), "ii")
+
+
 
         if eDbType.MYSQL == self.cType:
             self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
@@ -95,7 +104,7 @@ class cnDb (object):
             self.conn = odbc.connect (self.cUrl) #ansi=True
             self.cursor = self.conn.cursor()
 
-        if not self.cIsSql:
+        if not self.cIsSql and self.cName:
             self.cSchema =self.cName[:self.cName.find(".")] if self.cName.find(".") > 0 else config.DATA_TYPE['schema'][self.cType]
             self.cName =  self.cName[self.cName.find(".") + 1:] if self.cName.find(".") > 0 else self.cName
             if self.cSchema:  self.cSchema.replace("[", "").replace("]", "")
@@ -113,7 +122,7 @@ class cnDb (object):
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            p("Exception :"+str(exc_type)+" file name:"+str(fname)+" line: "+str(exc_tb.tb_lineno)+" massage: "+str(exc_obj.message), "e")
+            p("sb->close: Exception :"+str(exc_type)+" file name:"+str(fname)+" line: "+str(exc_tb.tb_lineno)+" massage: "+str(exc_obj.message), "e")
 
     def setColumns(self, sttDic):
         ret = OrderedDict ()
@@ -250,32 +259,31 @@ class cnDb (object):
         self.cColumns = tableStructure
         return stt
 
-    def toTarget (self,  results, tarSQL, dst, fnDic, numOfRows):
+    def toTarget (self,  results, tarSQL, dstDic, fnDic, numOfRows):
         try:
-            msgList = []
-
-            targetObj = cnDb(dst[1], conType=dst[0])
+            targetObj = cnDb(connDic=dstDic)
             targetObj.cursor.executemany(tarSQL, results)
             targetObj.conn.commit()
-            p('db->toTarget: FINISH Loading total of %s rows into target :%s ' % (str(numOfRows), str(dst[1])), "ii")
+            p('db->toTarget: FINISH Loading total of %s rows into target :%s ' % (str(numOfRows), str(dstDic[eConnValues.connObj])), "ii")
             targetObj.close()
-        except Exception as e:
+        except:
             p("db->toTarget: type: %s, name: %s ERROR in targetObj.cursor.executemany" % (self.cType, str(self.cName)), "e")
             p("db->toTarget: ERROR, target query: %s " % str(tarSQL), "e")
             p("db->toTarget: ERROR, sample result: %s " % str(results[0]), "e")
-            p(str(e), "e")
+            p(str(sys.exc_info()[0]), "e")
 
             if targetObj and config.RESULT_LOOP_ON_ERROR:
-                p("db->toTarget: ERROR, Loading row by row  ", "e")
+                p("db->toTarget: ERROR, will start to loading row by row  ", "e")
 
                 iCnt = 0
+                tCnt = len (results)
                 for r in results:
                     try:
                         iCnt+=1
                         r = [r]
                         targetObj.cursor.executemany(tarSQL, r)
                         targetObj.conn.commit()
-                    except Exception as e:
+                    except:
                         ret = ""
                         for col in r[0]:
                             if col is None:
@@ -285,10 +293,11 @@ class cnDb (object):
                             else:
                                 ret += "'" + str(col) + "' ,"
                         p("db->toTarget: ERROR, LOOPING ON ALL RESULTS, ROW ERROR ", "e")
-                        p(str(e), "e")
+                        p(str(sys.exc_info()[0]), "e")
                         p(tarSQL, "e")
                         p(ret, "e")
                 targetObj.close()
+                p("db->toTarget: ERROR Row by row: loader %s out of %s  " %(str(iCnt),str(tCnt)) , "e")
         return
 
     def dbIter(self, tarSQL, dstDict, fnDic):
@@ -339,7 +348,7 @@ class cnDb (object):
     def toDB (self, dstDict, tarL, srcL, fnDic):
         srcSql          = self.cSQL
         TargetTableType = dstDict [ eConnValues.connType ]
-        TargetTableName = dstDict [ eConnValues.connName ]
+        TargetTableName = dstDict [ eConnValues.connObj ]
 
         tarSQL  = "INSERT INTO "+TargetTableName+" "
 
@@ -530,8 +539,8 @@ class cnDb (object):
                 msg = decodeStrPython2Or3 (error, un=False)
             else:
                 msg = e
-            p("db->__executeSQL: ERROR : ")
-            p(e)
+            p("db->__executeSQL: ERROR : ", "e")
+            p(e, "e")
             p("db->__executeSQL: ERROR %s " % str(msg), "e")
             p("db->__executeSQL: ERROR SQL: %s " %(sql),"e" )
             return False

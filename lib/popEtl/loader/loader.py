@@ -223,7 +223,7 @@ def _execLoading ( params ):
     # Managing Destination table
     _execTarget(dstDict=dstDict)
 
-    # True / false indication
+    # True / False indication
     addSourceColumn = False
     if sttDic and config.STT_INTERNAL in sttDic:
         addSourceColumn = sttDic[config.STT_INTERNAL]
@@ -272,9 +272,10 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
         srcDic = setDicConnValue(connJsonVal=jMap[sourceConn], extraConnVal=jFileName, isSource=True) if sourceConn else None
         if queryConn and srcDic:
             p("loader->_extractNodes: Found %s and %s, will use %s as source data " %(ePopEtlProp.src, ePopEtlProp.qry,ePopEtlProp.qry),"i" )
-            srcDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True)
+        srcDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
 
         tarDic = setDicConnValue(connJsonVal=jMap[targetConn], extraConnVal=jFileName, isTarget=True) if targetConn else None
+
 
         # if there is source and target or merge with source/target
         if (srcDic and tarDic) or (mergeConn and (srcDic or tarDic)):
@@ -284,15 +285,17 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
                 if sttDic:
                     sttDicTemp = sttDic
                     sttDic = OrderedDict()
-                    for t in targetMapping:
-                        if t in sttDicTemp:
-                            sttDic[t] = sttDicTemp[t]
-                            if "s" not in sttDic[t]:
-                                sttDic[t]["s"] = targetMapping[t]
-                        else:
-                            sttDic[t] = {"s": targetMapping[t]}
-                    for t in sttDicTemp:
-                        if t not in sttDic: sttDic[t] = sttDicTemp[t]
+                    if targetMapping:
+                        for t in targetMapping:
+                            if t in sttDicTemp:
+                                sttDic[t] = sttDicTemp[t]
+                                if "s" not in sttDic[t]:
+                                    sttDic[t]["s"] = targetMapping[t]
+                            else:
+                                sttDic[t] = {"s": targetMapping[t]}
+                    if sttDicTemp:
+                        for t in sttDicTemp:
+                            if t not in sttDic: sttDic[t] = sttDicTemp[t]
                 else:
                     sttDic = OrderedDict()
                     for t in targetMapping:
@@ -311,7 +314,7 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
                 toLoad = True if tarDic[eConnValues.connName] in destList or tarDic[eConnValues.connObj] in destList else False
 
             if toLoad:
-                p('loader->_extractNodes: Loading source type %s, source name %s into destination type: %s, destination name %s >>>>>' % (str(srcDic[ eConnValues.connType ]), srcDic[ eConnValues.connName ], str(dstDic[ eConnValues.connType ]), dstDic[ eConnValues.connName ]), "ii")
+                p('loader->_extractNodes: Loading source type %s, source name %s into destination type: %s, destination name %s >>>>>' % (str(srcDic[ eConnValues.connType ]), srcDic[ eConnValues.connName ], str(tarDic[ eConnValues.connType ]), tarDic[ eConnValues.connName ]), "ii")
                 # if partition --> change to all partitions
                 # update list of data to process:
                 if partition:
