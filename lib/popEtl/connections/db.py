@@ -100,6 +100,10 @@ class cnDb (object):
             self.conn       = odbc.connect (self.cUrl) # , ansi=True
             self.cursor     = self.conn.cursor()
             self.cColoumnAs = False
+        elif eDbType.FILESQL == self.cType:
+            self.conn = odbc.connect(self.cUrl)
+            self.cursor = self.conn.cursor()
+
         else:
             self.conn = odbc.connect (self.cUrl) #ansi=True
             self.cursor = self.conn.cursor()

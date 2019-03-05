@@ -71,11 +71,11 @@ class config:
     NUM_OF_PROCESSES        = 1
     NUM_OF_LOADING_THREAD   = 1
 
-    SMTP_SERVER             =  "172.31.2.10" #"smtp.gmail.com:587"
-    SMTP_SERVER_USER        =  "AlertBi@b-zion.org.il" #"tal@bpmk.co.il"
-    SMTP_SERVER_PASS        = "bi2018"
-    SMTP_SENDER             = "AlertBi@b-zion.org.il" #'tal@bpmk.co.il'
-    SMTP_RECEIVERS          = ['tal@bpmk.co.il'] # Oren.Muslavi@b-zion.org.il
+    SMTP_SERVER             = ""
+    SMTP_SERVER_USER        = ""
+    SMTP_SERVER_PASS        = ""
+    SMTP_SENDER             = ""
+    SMTP_RECEIVERS          = ['info@biSkilled.com']
 
     DATA_TYPE = \
     {'varchar'  :{'sql':'varchar',                      'oracle':('varchar','varchar2'),'mysql':'varchar',      'vertica':'varchar', },
@@ -96,6 +96,8 @@ class config:
      'sp'       :{'sql':{'match':r'([@].*[=])(.*?(;|$))', 'replace':r"[=;@\s']"}},
      'colFrame' :{'sql':("[","]"), 'oracle':("\"","\""), 'access':("[","]")}
     }
+
+    PARSER_SQL_MAIN_KEY = "popEtl"
 
     #logs in DB
     LOGS_IN_DB          = True

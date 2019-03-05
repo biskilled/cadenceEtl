@@ -28,6 +28,7 @@ class eConnValues (object):
     partitionCol    = "column"
     partitionAgg    = "agg"
     partitionStart  = "start"
+    fileToLoad      = "file"
 
 class ePopEtlProp (object):
     src = "source"

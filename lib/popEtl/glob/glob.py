@@ -18,11 +18,13 @@
 import re
 import sys
 import os
+import io
 import datetime
 import logging
 from collections import OrderedDict
 
 from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp, isDbType
+from popEtl.glob.sqlPythonQueries import queryParsetIntoList
 from  popEtl.config import config
 
 def getLogger (
@@ -110,7 +112,7 @@ def replaceStr (sString,findStr, repStr, ignoreCase=True):
         res = pattern.sub (repStr, sString)
     else:
         res = sString.replace (findStr, repStr)
-    return bytes (res, 'utf8')
+    return res
 
 def decodeStrPython2Or3 (sObj, un=True):
     pVersion = sys.version_info[0]
@@ -124,7 +126,8 @@ def decodeStrPython2Or3 (sObj, un=True):
             return str(sObj).decode("windows-1255")
 
 def setDicConnValue (connJsonVal=None, connType=None, connName=None,
-                     connObj=None, connFilter=None, connUrl=None, extraConnVal=None,
+                     connObj=None, connFilter=None, connUrl=None,
+                     extraConnVal=None,fileToLoad=None,
                      isSql=False, isTarget=False, isSource=False):
     retVal = {eConnValues.connName:connName,
               eConnValues.connType:connType.lower() if connType else None ,
@@ -132,6 +135,7 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
               eConnValues.connUrlExParams:extraConnVal,
               eConnValues.connObj:connObj,
               eConnValues.connFilter:connFilter,
+              eConnValues.fileToLoad:fileToLoad,
               eConnValues.connIsSql:isSql,
               eConnValues.connIsSrc:isSource,
               eConnValues.connIsTar:isTarget}
@@ -151,7 +155,7 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
             p(err, "e")
             raise Exception(err)
 
-        if retVal[eConnValues.connName] is None:
+        if retVal[ eConnValues.connName ] is None:
             err = "glob->_setDicConnValue: Connection Name is not defined: %s " %(connJsonVal)
             p(err, "e")
             raise Exception(err)
@@ -165,6 +169,8 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
                         retVal[eConnValues.connType] = connUrl[eConnValues.connType].lower()
                     if eConnValues.connUrl in connUrl:
                         retVal[eConnValues.connUrl] = connUrl[eConnValues.connUrl]
+                    if eConnValues.fileToLoad in connUrl:
+                        retVal[eConnValues.fileToLoad] = connUrl[eConnValues.fileToLoad]
             else:
                 err = "glob->_setDicConnValue: Connection Name %s is not defined in CONN_URL config. define names are : %s  "  %(retVal[eConnValues.connName], str(list(config.CONN_URL.keys())))
                 p(err, "e")
@@ -173,9 +179,39 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
         # sample : sql1 - will be rename to sql as a type
         retVal[eConnValues.connType] = ''.join([i for i in retVal[eConnValues.connType].lower() if not i.isdigit()])
 
-        # For access - add paramters
-        if eDbType.ACCESS == retVal[eConnValues.connType] and retVal[eConnValues.connUrlExParams] is not None:
-            retVal[eConnValues.connUrl] = retVal[eConnValues.connUrl][0] % (retVal[eConnValues.connUrl][1] + str(retVal[eConnValues.connUrlExParams].split(".")[0] + ".accdb"))
+        #################   ACCESS - ADD EXTRA PARAMTERS -> Access File DB
+        if eDbType.ACCESS == retVal[eConnValues.connType] :
+            if retVal[eConnValues.connUrlExParams] is not None:
+                retVal[eConnValues.connUrl] = retVal[eConnValues.connUrl][0] % (retVal[eConnValues.connUrl][1] + str(retVal[eConnValues.connUrlExParams].split(".")[0] + ".accdb"))
+            else:
+                err = "glob->_setDicConnValue: Connection %s is missing Access file " % (retVal[eConnValues.connName])
+                p(err, "e")
+                raise Exception(err)
+
+        #################   LOAD SQL QUERIES FROM FILE - ADD EXTRA PARAMTERS -> File loacation
+        foundQuery = False
+        allParams  = []
+        if retVal[eConnValues.fileToLoad] is not None:
+            sqlFile = "%s.sql" %retVal[eConnValues.fileToLoad] if retVal[eConnValues.fileToLoad][-4:]!=".sql" else retVal[eConnValues.fileToLoad]
+            if os.path.isfile(sqlFile):
+                with io.open(sqlFile, 'r', encoding='utf-8') as inp:
+                    sqlScript = inp.readlines()
+                    allQueries = loadPythonParam = queryParsetIntoList (sqlScript, getPython=True, removeContent=True, dicProp=None, pythonWord=config.PARSER_SQL_MAIN_KEY)
+                    for q in allQueries:
+                        allParams.append(q[1])
+                        if q[0] and q[0] == retVal[eConnValues.connObj]:
+                            retVal[eConnValues.connObj]     = q[1]
+                            retVal[eConnValues.connIsSql]   = True
+                            foundQuery = True
+                            break
+                if not foundQuery:
+                    err = "glob->_setDicConnValue: There is paramter %s which is not found in %s, existing keys: %s " % (retVal[eConnValues.connObj],sqlFile, str(allParams))
+                    p(err, "e")
+                    raise Exception(err)
+            else:
+                err = "glob->_setDicConnValue: %s is not found  " % (sqlFile)
+                p(err, "e")
+                raise Exception(err)
 
         retVal[eConnValues.connType] = isDbType( retVal[eConnValues.connType] )
 
