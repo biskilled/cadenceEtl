@@ -30,7 +30,8 @@ from  popEtl.config import config
 def getLogger (
     LOG_FORMAT     = '%(asctime)s %(levelname)s %(message)s',
     LOG_DIR        = None,
-    LOG_FILE       = 'file'
+    LOG_FILE       = 'file',
+    LOGS_DEBUG      = logging.DEBUG
     ):
 
     #logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
@@ -46,17 +47,16 @@ def getLogger (
     consoleHandler.setFormatter(logFormatter)
     logg.addHandler(consoleHandler)
 
-    logg.setLevel(logging.DEBUG)
+    logg.setLevel( LOGS_DEBUG )
 
     return logg
 
-
-logg = getLogger ()
+logg = getLogger (LOGS_DEBUG=config.LOGS_DEBUG)
 def p(msg, ind='I'):
     ind = ind.upper()
     indPrint = {'E': 'ERROR>> ',
-                'I': 'Information>> ',
-                'II': 'Info>> ',
+                'I': 'INFO >> ',
+                'II': 'DEBUG>> ',
                 'III': 'Progress>> '}
     allowToPrint    = ['E', 'I','II', 'III']  #  'II', 'III'
     #allowToPrint = ['E','I']
@@ -77,9 +77,9 @@ def p(msg, ind='I'):
             if 'III' in ind:
                 logg.debug("\r %s %s" %(indPrint[ind], msg))
             elif 'II' in ind:
-                logg.info("%s %s" %(indPrint[ind], msg))
+                logg.debug("%s %s" %(indPrint[ind], msg))
             elif 'I' in ind:
-                logg.warning("%s %s" %(indPrint[ind], msg))
+                logg.info("%s %s" %(indPrint[ind], msg))
             else:
                 logg.error(str(indPrint[ind]) + str(msg))
 
@@ -90,23 +90,27 @@ def setQueryWithParams(query):
             for q in query:
                 #q = str(q, 'utf-8')
                 for param in config.QUERY_PARAMS:
-                    if param in q:
-                        q = q.replace(param, config.QUERY_PARAMS[param])
-                        p("config->setQueryWithParams: replace param %s with value %s, sql: %s " % (str(param), str(config.QUERY_PARAMS[param]), str (q)), "ii")
+                    q = replaceStr(sString=q, findStr=param, repStr=config.QUERY_PARAMS[param], ignoreCase=True, addQuotes="'")
+                    #if param in q:
+                    #    q = q.replace(param, config.QUERY_PARAMS[param])
+                    p("glob->setQueryWithParams: replace param %s with value %s" % (str(param), str(config.QUERY_PARAMS[param])), "ii")
                 qRet += q
         else:
             #query= str (query, 'utf-8')
 
             for param in config.QUERY_PARAMS:
                 if param in query:
-                    query = query.replace(param, config.QUERY_PARAMS[param])
-                    p("config->setQueryWithParams: replace param %s with value %s, sql: %s " % (str(param), str(config.QUERY_PARAMS[param]), str(query)), "ii")
+                    query = replaceStr(sString=query, findStr=param, repStr=config.QUERY_PARAMS[param], ignoreCase=True,addQuotes="'")
+                    p("glob->setQueryWithParams: replace param %s with value %s ..." % (str(param), str(config.QUERY_PARAMS[param])), "ii")
             qRet += query
     else:
         qRet = query
     return qRet
 
-def replaceStr (sString,findStr, repStr, ignoreCase=True):
+def replaceStr (sString,findStr, repStr, ignoreCase=True,addQuotes=None):
+    if addQuotes and isinstance(repStr,str):
+        repStr="%s%s%s" %(addQuotes,repStr,addQuotes)
+
     if ignoreCase:
         pattern = re.compile(re.escape(findStr), re.IGNORECASE)
         res = pattern.sub (repStr, sString)
@@ -196,7 +200,8 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
             if os.path.isfile(sqlFile):
                 with io.open(sqlFile, 'r', encoding='utf-8') as inp:
                     sqlScript = inp.readlines()
-                    allQueries = loadPythonParam = queryParsetIntoList (sqlScript, getPython=True, removeContent=True, dicProp=None, pythonWord=config.PARSER_SQL_MAIN_KEY)
+                    allQueries =  queryParsetIntoList (sqlScript, getPython=True, removeContent=True, dicProp=None, pythonWord=config.PARSER_SQL_MAIN_KEY)
+
                     for q in allQueries:
                         allParams.append(q[1])
                         if q[0] and q[0] == retVal[eConnValues.connObj]:
@@ -228,6 +233,7 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
 
 def getDicKey (etlProp, allProp):
     etlProp = str(etlProp).lower() if etlProp else ''
+
     if etlProp in ePopEtlProp.dicOfProp:
         etlProps = ePopEtlProp.dicOfProp[ etlProp ]
 

@@ -43,6 +43,7 @@ class ePopEtlProp (object):
     col = "column"
     par = "partition"
     inc = "incremental"
+    exe = "execsql"
 
     dicOfProp = {
         src : ["source","src"],
@@ -54,5 +55,6 @@ class ePopEtlProp (object):
         map : ['mapping', 'map'],
         col : ['columns', 'column', 'col'],
         par : ['partition'],
-        inc : ['inc', 'incremental']
+        inc : ['inc', 'incremental'],
+        exe : ['esql', 'execsql']
     }

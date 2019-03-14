@@ -1,7 +1,5 @@
 import io, re
 
-from popEtl.glob.glob import replaceStr
-
 def _removeComments (listQuery, endOfLine='\n'):
     retList = []
     for s in listQuery:
@@ -12,7 +10,7 @@ def _removeComments (listQuery, endOfLine='\n'):
             isTup = True
         else:
             post = s.strip()
-        post = re.sub(r"--.*",          "", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.S )
+        post = re.sub(r"--.*[\n$]", r"", post, flags=re.DOTALL| re.IGNORECASE | re.MULTILINE | re.UNICODE | re.S ).replace ("--","")
         post = re.sub(r'\/\*.*\*\/',    "", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL )
         post = re.sub(r"print .*[$\n]", "", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.S )
 
@@ -36,28 +34,37 @@ def _removeComments (listQuery, endOfLine='\n'):
 def _getPythonParam (queryList, mWorld="popEtl"):
     ret = []
     for query in queryList:
-        # fPython1 = re.search(r"<%s>.[^<]*</%s>" %(mWorld, mWorld), sql, re.I|re.M|re.S|re.U )
-        fPython     = re.search(r"<%s([^>].*)/>" % (mWorld), query, re.I | re.M | re.S | re.U)
-        fPythonNot  = re.search(r"<!%s([^>].*)/>" % (mWorld), query, re.I | re.M | re.S | re.U)
-        if fPython:
-            pythonSeq = fPython.group(0)
-            pythonVar = fPython.group(1).strip()
-            querySql  = query[ query.find(pythonSeq)+len(pythonSeq) : ]
-            queryStart= query[ : query.find(pythonSeq) ].strip()
-            if queryStart and len (queryStart)>0:
-                ret.append((None, queryStart))
-            ret.append ( (pythonVar, querySql) )
-        elif fPythonNot:
-            pythonSeq = fPythonNot.group(0)
-            querySql = query[query.find(pythonSeq) + len(pythonSeq):]
-            queryStart = query[: query.find(pythonSeq)].strip()
-            if queryStart and len (queryStart)>0:
-                ret.append((None, queryStart))
-            ret.append(("~", querySql))
+        # Delete all rows which are not relevant
+        # Regex : <!popEtl XXXX/>
+        #fPythonNot = re.search(r"<!%s([^>].*)/>" % (mWorld), query,flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S)
+        # Regex : <!popEtl> ......... </!popEtl>
+        reg = re.finditer(r"<!%s(.+?)</!%s>" % (mWorld, mWorld), query,flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S )
+        if reg:
+            for regRemove in reg:
+                query = query.replace (regRemove.group(0),"")
+
+        # Add python queries into return list
+        # Regex : <popEtl STRING_NAME> ....... </popEtl>
+        #fPython2    = re.search(r"<%s.*/%s>" % (mWorld,mWorld),   query, flags = re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S)
+
+        # Regex : <popEtl STRING_NAME>......</popEtl> --> Take string to the end
+        reg = re.finditer(r"<%s(.+?)>(.+?)</%s>" %(mWorld,mWorld), query,flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S)
+
+        if reg:
+            for i, regFind in enumerate (reg):
+                pythonSeq = regFind.group(0)
+                pythonVar = regFind.group(1).strip()
+                querySql  = regFind.group(2).strip()
+
+                if i == 0 and regFind.start()>0:
+                    queryStart = query[: query.find(pythonSeq)].strip()
+                    if queryStart and len (queryStart)>0:
+                        ret.append((None, queryStart))
+
+                ret.append((pythonVar, querySql))
         else:
             if query and len(query.strip()) > 0:
                 ret.append ( (None, query.strip()) )
-
     return ret
 
 def _getAllQuery (longStr, splitParam = ['GO',u';']):
@@ -72,6 +79,14 @@ def _getAllQuery (longStr, splitParam = ['GO',u';']):
             sqlList = tmpList
     return sqlList
 
+def _replaceStr (sString,findStr, repStr, ignoreCase=True):
+    if ignoreCase:
+        pattern = re.compile(re.escape(findStr), re.IGNORECASE)
+        res = pattern.sub (repStr, sString)
+    else:
+        res = sString.replace (findStr, repStr)
+    return res
+
 def _replaceProp(allQueries, dicProp):
     ret = []
     for query in allQueries:
@@ -82,7 +97,7 @@ def _replaceProp(allQueries, dicProp):
             pr2 = query
         if not pr1 or pr1 and pr1!="~":
             for prop in dicProp:
-                pr2= ( replaceStr(sString=pr2, findStr=prop, repStr=dicProp[prop], ignoreCase=True) )
+                pr2= ( _replaceStr(sString=pr2, findStr=prop, repStr=dicProp[prop], ignoreCase=True) )
 
         tupRet = (pr1, pr2,) if isinstance(query, (list,tuple)) else pr2
         ret.append (tupRet)
@@ -105,11 +120,3 @@ def queryParsetIntoList (sqlScript, getPython=True, removeContent=True, dicProp=
 
     return allQueries
 
-with io.open('./sqlQuery.sql', 'r',  encoding='utf-8') as inp:
-    sqlScript = inp.readlines()
-    dicProp = {"@c1":"cccccc","@f1":"ppppp","@f2":"123456","@f3":"vcvcvcvcvcvcc"}
-    queryList = queryParsetIntoList (sqlScript, getPython=True, removeContent=True, pythonWord="popEtl",dicProp=dicProp)
-
-    for ret in queryList:
-        print ("-----------------------------------------")
-        print (ret)

@@ -48,7 +48,6 @@ class connector ():
             p ("CONNECTOR->init: %s is Not valid connection .... quiting ...." %(str(connDic)) ,"e")
             return
 
-
     # GENERAL
     def setColumns(self, sttDic):
         p ("CONNECTOR->setColumns: setColumn type:%s, name: %s " %(self.cType, self.cName), "ii")
@@ -107,6 +106,7 @@ class connector ():
                         if tc in colList:
                             newKey.append ( j )
                     fnDic[tuple(newKey)] = (cnt, colFun, toEval)
+
         return self.objClass.toDB(dstDict=dstDict, tarL=tarL, srcL=srcL, fnDic=fnDic)
 
     def sqlTargetMapping(self):

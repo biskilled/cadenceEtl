@@ -76,6 +76,7 @@ def addIncemenral (inc, isSQL, srcObj, srcMapping=None):
 
 # Will merge table with connection in source object
 def _execMerge (dstDict, mergeConn, sttDic, toCreate=True):
+
     mergeKeys = None
     if isinstance( mergeConn , (list,tuple) ):
         mergeTable = mergeConn[0]
@@ -127,7 +128,6 @@ def _appendPartitions (srcDic, partition):
 
 # jMap, src, dst
 def _execTarget (dstDict):
-
     if dstDict[ eConnValues.connFilter ]:
         dstObj = connector( connDic=dstDict)
         sql = "Delete From " + dstObj.cName + " Where " + dstDict[ eConnValues.connFilter ]
@@ -144,6 +144,17 @@ def _execTarget (dstDict):
         dstObj.close()
         return
     return
+
+def _execSql (connDict):
+    if connDict[ eConnValues.connIsSql ] == True:
+        connObj = connector(connDic=connDict)
+        sql = setQueryWithParams( connDict[ eConnValues.connObj ] )
+        p("loader->_execSql: exec  %s " % (sql), "i")
+        connObj.execSP(sql)
+        connObj.close()
+        return
+
+
 
 def _updateSourceTargetCompareLog (js):
     isRepoTblsExists  = False
@@ -219,7 +230,15 @@ def _updateSourceTargetCompareLog (js):
 # jMap, src, dst, sttDic, isSQL, merge, inc, seq
 def _execLoading ( params ):
     (srcDict, dstDict, mergeConn, sttDic, jFileName, cProc, tProc) = params
-    p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(srcDict[eConnValues.connName])), "i")
+    if srcDict and dstDict:
+        p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(srcDict[eConnValues.connName])), "i")
+    elif mergeConn:
+        p("loader->_execLoading: MERGE !!!! " , "i")
+        if not dstDict:
+            dstDict = srcDict
+        _execMerge(dstDict=dstDict, mergeConn=mergeConn, sttDic=None, toCreate=True)
+        return
+
     # Managing Destination table
     _execTarget(dstDict=dstDict)
 
@@ -232,7 +251,7 @@ def _execLoading ( params ):
     srcObj = connector(connDic=srcDict)
 
     # Check if source is same as target connection (only for merge option)
-    if  srcDict[eConnValues.connType] == dstDict[eConnValues.connType] and \
+    if  srcDict and dstDict and srcDict[eConnValues.connType] == dstDict[eConnValues.connType] and \
         srcDict[eConnValues.connObj] == dstDict[eConnValues.connObj]:
         p('loader->execLoading: TYPE: %s, SOURCE and TARGET %s object are identical.. will check if there is merge >>>>>' % (str(srcDict[eConnValues.connType]), str(srcDict[eConnValues.connObj])), "ii")
 
@@ -241,21 +260,30 @@ def _execLoading ( params ):
         # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
         srcObj.toDB(dstDict=dstDict, stt=sttDic)
 
-    if mergeConn:
-        _execMerge (dstDict=dstDict, mergeConn=mergeConn, sttDic=None, toCreate=True)
+
+    #if mergeConn:
+    #    _execMerge (dstDict=dstDict, mergeConn=mergeConn, sttDic=None, toCreate=True)
 
     srcObj.close()
     if config.LOGS_IN_DB : logsToDb( str(jFileName)+":"+str(dstDict[eConnValues.connName]) )
 
-def _extractNodes (jText,jFileName,sourceList=None, destList=None):
+def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess=None):
     processList = []
     loadedObject= []
     cProc       = 0
     for jMap in jText:
+        # if there is a list - will exec nodes in on a single process
+        if isinstance(jMap, (list,tuple)):
+            loadedObject = _extractNodes(jText=jMap, jFileName=jFileName,
+                                         sourceList=sourceList, destList=destList,
+                                         singleProcess=True)
+            continue
+
+
         toLoad = True
         sttDic = None
         keys = [x.lower() for x in jMap.keys()]
-
+        locSql          = None
         sourceConn      = getDicKey(ePopEtlProp.src, keys)
         queryConn       = getDicKey(ePopEtlProp.qry, keys)
         targetConn      = getDicKey(ePopEtlProp.tar, keys)
@@ -266,21 +294,30 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
 
         partition       = getDicKey(ePopEtlProp.par,keys)
         inc             = getDicKey(ePopEtlProp.inc,keys)
+        execSql         = getDicKey(ePopEtlProp.exe,keys)
+
 
         sttDic          = jMap[stt]  if stt and len (jMap[stt])>0 else None
         mergeConn       = jMap[mergeConn]  if mergeConn and len (jMap[mergeConn])>0 else None
 
         srcDic = setDicConnValue(connJsonVal=jMap[sourceConn], extraConnVal=jFileName, isSource=True) if sourceConn else None
-        if queryConn and srcDic:
-            p("loader->_extractNodes: Found %s and %s, will use %s as source data " %(ePopEtlProp.src, ePopEtlProp.qry,ePopEtlProp.qry),"i" )
-        srcDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
+        if queryConn:
+            if srcDic:
+                p("loader->_extractNodes: Found %s and %s, will use %s as source data " %(ePopEtlProp.src, ePopEtlProp.qry,ePopEtlProp.qry),"i" )
+            srcDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True) if queryConn else None
 
         tarDic = setDicConnValue(connJsonVal=jMap[targetConn], extraConnVal=jFileName, isTarget=True) if targetConn else None
+
+        execDic= setDicConnValue(connJsonVal=jMap[execSql], extraConnVal=jFileName, isSql=True) if execSql else None
+        if execDic:
+            locSql = keys.index(execSql)
+            if locSql==0: _execSql(execDic)
+            if len(keys) == 1:
+                continue
 
 
         # if there is source and target or merge with source/target
         if (srcDic and tarDic) or (mergeConn and (srcDic or tarDic)):
-
             # update sttDic with mapping -> if exists
             if tarDic:
                 if sttDic:
@@ -297,7 +334,7 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
                     if sttDicTemp:
                         for t in sttDicTemp:
                             if t not in sttDic: sttDic[t] = sttDicTemp[t]
-                else:
+                elif targetMapping:
                     sttDic = OrderedDict()
                     for t in targetMapping:
                         sttDic[t] = {"s": targetMapping[t]}
@@ -315,7 +352,12 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
                 toLoad = True if tarDic[eConnValues.connName] in destList or tarDic[eConnValues.connObj] in destList else False
 
             if toLoad:
-                p('loader->_extractNodes: Loading source type %s, source name %s into destination type: %s, destination name %s >>>>>' % (str(srcDic[ eConnValues.connType ]), srcDic[ eConnValues.connName ], str(tarDic[ eConnValues.connType ]), tarDic[ eConnValues.connName ]), "ii")
+                if srcDic and tarDic:
+                    p('loader->_extractNodes: SOURCE %s -> TARET %s ; %s -->  %s .......' % (str(srcDic[ eConnValues.connType ]), str(tarDic[ eConnValues.connType ]), srcDic[ eConnValues.connName ], tarDic[ eConnValues.connName ]), "ii")
+                elif tarDic and mergeConn:
+                    p('loader->_extractNodes: Type: %s, TAREGT -> MERGE %s  .......' % (str(tarDic[eConnValues.connType]), tarDic[eConnValues.connName]), "ii")
+                elif srcDic and mergeConn:
+                    p('loader->_extractNodes: Type: %s, SOURCE -> MERGE %s  .......' % (str(srcDic[eConnValues.connType]), srcDic[eConnValues.connName]), "ii")
                 # if partition --> change to all partitions
                 # update list of data to process:
                 if partition:
@@ -332,18 +374,30 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
                                                          connFilter=None,
                                                          connUrl=None, extraConnVal=None, isSql=True,
                                                          isTarget=False, isSource=True)
-
-                            processList.append( (tmpParDic, tarDic, mergeConn, sttDic, jFileName, cProc) )
+                            if singleProcess:
+                                _execLoading((tmpParDic, tarDic, mergeConn, sttDic, jFileName, cProc, 1))
+                            else:
+                                processList.append((tmpParDic, tarDic, mergeConn, sttDic, jFileName, cProc))
 
                         loadedObject.append("P: %s; " %tarDic[ eConnValues.connObj ])
                     else:
                         cProc += 1
                         p('loader->_extractNodes: Cannot have partition with query as source.. will use query as is, sql: %s >>>>>' % (str(srcDic [ eConnValues.connObj ])), "ii")
-                        processList.append( (srcDic, tarDic, mergeConn, sttDic, jFileName, cProc) )
+                        if singleProcess:
+                            _execLoading( (srcDic, tarDic, mergeConn, sttDic, jFileName, cProc, 1) )
+                        else:
+                            processList.append((srcDic, tarDic, mergeConn, sttDic, jFileName, cProc))
                 else:
                     cProc += 1
-                    processList.append( (srcDic, tarDic, mergeConn, sttDic,  jFileName, cProc) )
-                loadedObject.append("%s; " %(tarDic [ eConnValues.connObj ]))
+                    if singleProcess:
+                        _execLoading((srcDic, tarDic, mergeConn, sttDic, jFileName, cProc , 1))
+                    else:
+                        processList.append((srcDic, tarDic, mergeConn, sttDic, jFileName, cProc))
+                if tarDic:
+                    loadedObject.append("%s; " %(tarDic [ eConnValues.connObj ]))
+                elif mergeConn:
+                    mergTbl = mergeConn[0] if isinstance(mergeConn, (list,tuple)) else mergeConn
+                    loadedObject.append("MERGE: %s; " % (mergTbl))
         else:
             p("loader->_extractNodes: There is nothing to do >>>>>>>>>>>>>>", "i")
 
@@ -354,6 +408,7 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
     # Add total processes to execute
     for i, itemP in enumerate(processList):
         processList[i] = itemP + (cProc,)
+
 
     if numOfProcesses > 1:
         proc = multiprocessing.Pool(config.NUM_OF_PROCESSES).map(_execLoading, processList)

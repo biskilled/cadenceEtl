@@ -100,9 +100,6 @@ class cnDb (object):
             self.conn       = odbc.connect (self.cUrl) # , ansi=True
             self.cursor     = self.conn.cursor()
             self.cColoumnAs = False
-        elif eDbType.FILESQL == self.cType:
-            self.conn = odbc.connect(self.cUrl)
-            self.cursor = self.conn.cursor()
 
         else:
             self.conn = odbc.connect (self.cUrl) #ansi=True
@@ -360,8 +357,8 @@ class cnDb (object):
         if len (tarL)>0:
             tarPre, tarPost = config.DATA_TYPE['colFrame'][TargetTableType]
             srcPre, srcPost = config.DATA_TYPE['colFrame'][self.cType]
-            stcSelect= srcSql.lower().find("select ")
-            stcFrom  = srcSql.lower().find(" from ")
+            stcSelect= srcSql.lower().replace ("\n"," ").find("select ")
+            stcFrom  = srcSql.lower().replace ("\n"," ").find(" from ")
 
             if stcSelect>-1 and stcFrom>0:
                 preSrcSql   = srcSql[:stcSelect+7]

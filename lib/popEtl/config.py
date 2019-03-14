@@ -19,6 +19,7 @@ from __future__ import  (absolute_import, division, print_function)
 __metaclass__ = type
 
 import datetime
+import logging
 from popEtl.glob.enums import eDbType
 
 class config:
@@ -106,6 +107,7 @@ class config:
     LOGS_ARR_I          = []
     LOGS_ARR_E          = []
     LOGS_COUNT_SRC_DST = False
+    LOGS_DEBUG          = logging.DEBUG
 
     LOGS_DB_TBL = {"AAA_LOG_ERR":{"d":"startDate","f":["updateDate","startDate","logType","dDesc"],"t":"error","days":10},
                    "AAA_LOG_INFO": {"d": "startDate", "f": ["updateDate","startDate","logType","dDesc"],"t":"info", "days":10}

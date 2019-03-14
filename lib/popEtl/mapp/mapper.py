@@ -178,6 +178,11 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
         tarObj  = None
         sttDic  = OrderedDict()
         dicProp[ ePopEtlProp.add ] = False
+
+        if isinstance(jMap, (list,tuple)):
+            _extractNodes(jText=jMap, jFileName=jFileName, sourceList=sourceList, destList=destList)
+            continue
+
         keys = [x.lower() for x in jMap.keys()]
         # update all variables
         sourceConn      = getDicKey(ePopEtlProp.src,keys)
@@ -294,4 +299,5 @@ def model (dicObj=None, sourceList=None, destList=None):
                 _extractNodes(jText=jText, jFileName=js, sourceList=sourceList, destList=destList)
 
     if config.LOGS_IN_DB: logsToDb()
-    p ('mapper->model: FINISH DESIGN >>>>>', "i" )
+    p ('mapper->model: FINISH MAPPING >>>>>', "i")
+    p ('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', "ii")
