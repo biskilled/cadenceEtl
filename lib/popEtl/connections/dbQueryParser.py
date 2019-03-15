@@ -20,7 +20,7 @@ from sqlparse.sql       import IdentifierList, Identifier
 from sqlparse.tokens    import Keyword, DML
 
 from popEtl.config      import config
-from popEtl.glob.glob   import p
+from popEtl.glob.glob   import p, replaceStr
 
 def is_subselect(parsed):
     if not parsed.is_group:
@@ -134,6 +134,8 @@ def extract_tables(sql):
     extracted_tables = []
     extracted_last_tables_Tuple = None
     extracted_last_columns_Dic = None
+    # replacements to SQL queries
+    sql = replaceStr (sString=sql,findStr="ISNULL (", repStr="ISNULL(", ignoreCase=True,addQuotes=None)
     statements = list(sqlparse.parse(sql))
 
     for statement in statements:
