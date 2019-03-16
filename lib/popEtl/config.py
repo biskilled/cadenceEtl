@@ -26,11 +26,11 @@ class config:
     #########################   Feild per model ##############################################
     CONNECTIONS_ACTIVE      = {eDbType.SQL: "cnDb", eDbType.ORACLE: "cnDb", eDbType.MYSQL: "cnDb", eDbType.VERTIVA: "cnDb", eDbType.FILE: "cnFile"}
 
-    DIR_DATA    = "C:\\Python27\\apps\\mapper\\dataTrade"
-    CONN_URL    =  {    'sql'    :"DRIVER={SQL Server};SERVER=TAL-LENOVO,1433;DATABASE=bnz_namer;UID=tals;PWD=tals;",
-                        'oracle' :"DRIVER={SQL Server};SERVER=TAL-LENOVO,1433;DATABASE=bnz_namer;UID=tals;PWD=tals;",
-                        'mysql'  :"host=vertica-test-1.tuenti.int, user=bi, passwd=delegated3206, db=sampled_mirror_operational",
-                        'vertica':"DRIVER=HPVertica;SERVER=vertica-test-1.tuenti.int;DATABASE=db1;PORT=5433;UID=dbadmin;PWD=mypassword",
+    DIR_DATA    = ""
+    CONN_URL    =  {    'sql'    :"DRIVER={SQL Server};SERVER=server,1433;DATABASE=database;UID=uid;PWD=pass;",
+                        'oracle' :"DRIVER={SQL Server};SERVER=server,1433;DATABASE=database;UID=uid;PWD=pass;",
+                        'mysql'  :"host=host, user=user, passwd=pass, db=db",
+                        'vertica':"DRIVER=HPVertica;SERVER=server;DATABASE=database;PORT=5433;UID=user;PWD=pass",
                         'file'   :{'delimiter':',','header':True, 'folder':""}
                    }
 
@@ -99,6 +99,7 @@ class config:
     }
 
     PARSER_SQL_MAIN_KEY = "popEtl"
+    PARSER_FILE_ENCODE  = "windows-1255"
 
     #logs in DB
     LOGS_IN_DB          = True

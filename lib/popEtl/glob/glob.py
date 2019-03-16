@@ -198,7 +198,7 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
         if retVal[eConnValues.fileToLoad] is not None:
             sqlFile = "%s.sql" %retVal[eConnValues.fileToLoad] if retVal[eConnValues.fileToLoad][-4:]!=".sql" else retVal[eConnValues.fileToLoad]
             if os.path.isfile(sqlFile):
-                with io.open(sqlFile, 'r', encoding='utf-8') as inp:
+                with io.open(sqlFile, 'r', encoding=config.PARSER_FILE_ENCODE) as inp:
                     sqlScript = inp.readlines()
                     allQueries =  queryParsetIntoList (sqlScript, getPython=True, removeContent=True, dicProp=None, pythonWord=config.PARSER_SQL_MAIN_KEY)
 
