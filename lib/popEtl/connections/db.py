@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # (c) 2017-2019, Tal Shany <tal.shany@biSkilled.com>
 #
 # This file is part of popEye
@@ -32,7 +33,7 @@ import popEtl.connections.dbQueryParser as queryParser
 # Data sources
 aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]
 if eDbType.SQL in aConnection or eDbType.ACCESS in aConnection :
-    import ceODBC as odbc #   ceODBC as odbc #pyodbc  # pyodbc version: 3.0.7
+    import pyodbc as odbc #   ceODBC as odbc #pyodbc  # pyodbc version: 3.0.7
 
 if eDbType.MYSQL  in aConnection   :
     import pymysql as pymysql
@@ -56,15 +57,8 @@ class cnDb (object):
         if self.cIsSql:
             self.cSQL = self.cName
         elif self.cName:
-            srcPre, srcPost = config.DATA_TYPE['colFrame'][self.cType]
-            tblName = self.cName.split(".")
-            if len(tblName) == 1:
-                tblName = srcPre+tblName[0]+ srcPost
-            else:
-                tblName = srcPre + tblName[0] + srcPost + "." + srcPre + tblName[1] + srcPost
-                #tblName = tblName[0] if len(tblName) == 1 else tblName[1]
+            tblName = self.__wrapSql(col=self.cName, remove=False)
             self.cSQL = "SELECT * FROM "+tblName
-
 
         self.cColumns   = []
         # Will be update if there is a query as source and mapping in query as well (select x as yy.....
@@ -81,8 +75,6 @@ class cnDb (object):
             return
 
         p("db->init: DB type: %s, table: %s, url: %s" % (self.cType, self.cName, str(self.cUrl)), "ii")
-
-
 
         if eDbType.MYSQL == self.cType:
             self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
@@ -106,10 +98,11 @@ class cnDb (object):
             self.cursor = self.conn.cursor()
 
         if not self.cIsSql and self.cName:
-            self.cSchema =self.cName[:self.cName.find(".")] if self.cName.find(".") > 0 else config.DATA_TYPE['schema'][self.cType]
-            self.cName =  self.cName[self.cName.find(".") + 1:] if self.cName.find(".") > 0 else self.cName
-            if self.cSchema:  self.cSchema.replace("[", "").replace("]", "")
-            if self.cName:    self.cName.replace("[", "").replace("]", "")
+            self.cName = self.__wrapSql(col=self.cName, remove=True)
+            self.cName = self.cName.split(".")
+
+            self.cSchema =self.cName[0] if len(self.cName) > 1 else config.DATA_TYPE['schema'][self.cType]
+            self.cName =  self.cName[1] if len(self.cName) > 1 else self.cName[0]
 
             if self.cWhere and len (self.cWhere)>1:
                 self.cWhere = re.sub (r'WHERE', '', self.cWhere, flags=re.IGNORECASE)
@@ -165,7 +158,7 @@ class cnDb (object):
             if boolToCreate:
                 sql = "CREATE TABLE "+tblName+" \n"
                 if seq:
-                    colSeqName = seq['column'].replace("[","").replace("]","")
+                    colSeqName = self._wrapSql(col=seq['column'], remove=True)
                     colType    = getattr(queries, self.cType + "_seq")(seq)
                     col += "["+colSeqName+"]"+"\t"+ colType
                 for colTup in colList:
@@ -267,11 +260,11 @@ class cnDb (object):
             targetObj.conn.commit()
             p('db->toTarget: FINISH Loading total of %s rows into target :%s ' % (str(numOfRows), str(dstDic[eConnValues.connObj])), "ii")
             targetObj.close()
-        except:
+        except Exception as e:
             p("db->toTarget: type: %s, name: %s ERROR in targetObj.cursor.executemany" % (self.cType, str(self.cName)), "e")
             p("db->toTarget: ERROR, target query: %s " % str(tarSQL), "e")
             p("db->toTarget: ERROR, sample result: %s " % str(results[0]), "e")
-            p(str(sys.exc_info()[0]), "e")
+            p(e, "e")
 
             if targetObj and config.RESULT_LOOP_ON_ERROR:
                 p("db->toTarget: ERROR, will start to loading row by row  ", "e")
@@ -284,7 +277,7 @@ class cnDb (object):
                         r = [r]
                         targetObj.cursor.executemany(tarSQL, r)
                         targetObj.conn.commit()
-                    except:
+                    except Exception as e:
                         ret = ""
                         for col in r[0]:
                             if col is None:
@@ -294,7 +287,7 @@ class cnDb (object):
                             else:
                                 ret += "'" + str(col) + "' ,"
                         p("db->toTarget: ERROR, LOOPING ON ALL RESULTS, ROW ERROR ", "e")
-                        p(str(sys.exc_info()[0]), "e")
+                        p(e, "e")
                         p(tarSQL, "e")
                         p(ret, "e")
                 targetObj.close()
@@ -365,24 +358,19 @@ class cnDb (object):
                 postSrcSql  = srcSql[stcFrom:]
                 newCol = ""
                 for i,t in enumerate(tarL):
-                    srcCBasic  = srcL[i].split(".")
                     if self.cIsSql:
-                        srcC =srcL[i]
+                        srcC = srcL[i]
                     else:
-                        if len(srcCBasic)>1:
-                            srcC =  srcCBasic[0]+"."+ srcPre + srcCBasic[1] + srcPost if srcL[i] != "''" else srcL[i]
-                        else:
-                            srcC = srcPre + srcCBasic[0] + srcPost if srcL[i] != "''" else srcL[i]
+                        srcC =  self.__wrapSql(col=srcL[i], remove=False)  if srcL[i] != "''" else srcL[i]
 
-                    srcT = srcPre + t + srcPost
+                    srcT = self.__wrapSql(col=t, remove=False)
                     newCol += srcC + " AS " + srcT + "," if self.cColoumnAs else srcC + ","
 
                 newCol = newCol[:-1]
                 srcSql = preSrcSql + newCol + postSrcSql
                 p("db->toDB: there is mapping, update to new sql query: %s " % (srcSql), "ii")
 
-
-            tarL = [tarPre + t + tarPost for t in tarL]
+            tarL = [self.__wrapSql(col=t,remove=False, cType=TargetTableType) for t in tarL]
             tarSQL +=  "(" + ','.join(tarL) + ") "
             tarSQL += "VALUES (" + ",".join(["?" for x in range(len(tarL))]) + ")"
 
@@ -419,12 +407,7 @@ class cnDb (object):
         self.__executeSQL( sqlQuery, direct=True )
 
     def merge (self, mergeTable, mergeKeys ):
-        targetName      = mergeTable[mergeTable.find(".")+1:] if mergeTable.find(".")>0 else mergeTable
-        targetSchema    = mergeTable[:mergeTable.find(".")] if mergeTable.find(".")>0 else None
-        if targetName   : targetName.replace ("[","").replace ("]","")
-        if targetSchema : targetSchema.replace ("[","").replace ("]","")
-
-        self.__sqlMerge(targetName, targetSchema, mergeKeys)
+        self.__sqlMerge(mergeTable, mergeKeys)
 
     def cntRows (self):
         sql = ""
@@ -444,8 +427,9 @@ class cnDb (object):
 
     def __cloneObject(self, colList, tblName=None):
         existStrucute = []
+        colList = [(str(self.__wrapSql(col=tup[0], remove=False) ),tup[1].lower().replace (" ","")) for tup in colList]
         tblName = tblName if tblName else  self.cName
-        tblName = tblName.replace("[","").replace("]","")
+        tblName = self.__wrapSql(col=tblName, remove=True)
         objectExists = self.__objectExists(objName=tblName)
         if (objectExists):
             p("db-> __cloneObject: Table %s is exist >>>>" % (tblName), "ii")
@@ -456,7 +440,9 @@ class cnDb (object):
 
             rows = self.cursor.fetchall()
             for row in rows:
-                existStrucute.append((row[0], row[1].lower().replace(' ', '')))
+                colName = self.__wrapSql(col=row[0],remove=False)
+                colType = row[1].lower().replace(' ', '')
+                existStrucute.append((colName, colType ))
 
         if config.TABLE_HISTORY:
             p ("db-> __cloneObject: Table History is ON ...","ii")
@@ -464,8 +450,6 @@ class cnDb (object):
             schemaEqual = True
 
             if (objectExists):
-                existStrucute   = [(str(tup[0]),tup[1].lower().replace (" ","")) for tup in existStrucute]
-                colList         = [(str(tup[0]),tup[1].lower().replace (" ","")) for tup in colList]
                 schemaEqual = True if existStrucute == colList  else False
 
                 if not schemaEqual:
@@ -515,22 +499,18 @@ class cnDb (object):
         return False
 
     def __executeSQL(self, sql, commit=True, direct=False):
+        if not (isinstance(sql, (list,tuple))):
+            sql = [sql]
         try:
-            if (isinstance(sql, (list,tuple))):
-                for s in sql:
-                    if direct:
-                        #self.conn.autocommit = True
-                        self.cursor.execdirect(s)
-                        #self.conn.autocommit = False
-                    else:
-                        self.cursor.execute(s)  # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(s)
-            else:
+            for s in sql:
+                s = unicode(s)
                 if direct:
                     #self.conn.autocommit = True
-                    self.cursor.execdirect(sql)
+                    self.cursor.execdirect(s)
                     #self.conn.autocommit = False
                 else:
-                    self.cursor.execute(sql)    # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(sql)
+                    self.cursor.execute(s)  # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(s)
+
             if commit:
                 self.conn.commit()          # if 'ceodbc' in odbc.__name__.lower() else self.cursor.commit()
             return True
@@ -558,13 +538,14 @@ class cnDb (object):
         p ('db-> __schemaCompare: table %s structure changed, old: %s, new: %s >>>>' %(self.cName, str(self.cColumns), str(colList) ), "ii")
         return False
 
-    def __sqlMerge(self, targetTable, targetSchema, mergeKeys):
+    def __sqlMerge(self, mergeTable, mergeKeys):
+        dstTable = self.__wrapSql(col=mergeTable, remove=False)
+        srcTable = self.__wrapSql(col=self.cName, remove=False)
+        if self.cSchema:
+            srcTable = "%s.%s" %(self.__wrapSql(col=self.cSchema, remove=False),srcTable)
+
         srcCol = [c[0] for c in self.cColumns]
         trgCol = srcCol
-
-        dstTable = "["+targetSchema+"].["+targetTable+"]" if targetSchema else "["+targetTable+"]"
-        srcTable = "["+self.cSchema+"].["+self.cName+"]" if self.cSchema else "["+self.cName+"]"
-
         # test
         colList     = []
         colFullList = []
@@ -585,6 +566,8 @@ class cnDb (object):
             mergeKeys = colList
 
         # dstTable, srcTable, mergeKeys, colList , colFullList
+        colList = [self.__wrapSql(col=x, remove=False)  for x in colList]
+        colFullList = [self.__wrapSql(col=x, remove=False)  for x in colFullList]
         sql = getattr(queries, self.cType + "_merge")(dstTable, srcTable, mergeKeys, colList , colFullList)
         self.__executeSQL(sql)
         p("db->sqlServer_Merge: Merged source %s table with %s table as target" % (srcTable, dstTable), "ii")
@@ -744,6 +727,20 @@ class cnDb (object):
         if not addSourceColumn and stt and len(stt)>0:
             sttTemp = stt
         return sttTemp
+
+    def __wrapSql (self, col, remove=False, cType=None):
+        if cType:
+            srcPre, srcPost = config.DATA_TYPE['colFrame'][cType]
+        else:
+            srcPre, srcPost = config.DATA_TYPE['colFrame'][self.cType]
+        coList = col.split(".")
+        ret = ""
+        for col in coList:
+            col = col.replace(srcPre,"").replace(srcPost,"")
+            if not remove:
+                col= "%s%s%s" %(srcPre,col,srcPost)
+            ret+=col+"."
+        return ret[:-1]
 
     # Neeeds to support unicode values...
     def __access(self,tableName):

@@ -232,39 +232,36 @@ def _execLoading ( params ):
     (srcDict, dstDict, mergeConn, sttDic, jFileName, cProc, tProc) = params
     if srcDict and dstDict:
         p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(srcDict[eConnValues.connName])), "i")
-    elif mergeConn:
+
+        # Managing Destination table
+        _execTarget(dstDict=dstDict)
+
+        # True / False indication
+        addSourceColumn = False
+        if sttDic and config.STT_INTERNAL in sttDic:
+            addSourceColumn = sttDic[config.STT_INTERNAL]
+            del sttDic[config.STT_INTERNAL]
+
+        srcObj = connector(connDic=srcDict)
+
+        # Check if source is same as target connection (only for merge option)
+        if  srcDict[eConnValues.connType] == dstDict[eConnValues.connType] and \
+            srcDict[eConnValues.connObj] == dstDict[eConnValues.connObj]:
+            p('loader->execLoading: TYPE: %s, SOURCE and TARGET %s object are identical.. will check if there is merge >>>>>' % (str(srcDict[eConnValues.connType]), str(srcDict[eConnValues.connObj])), "ii")
+
+        else:
+            sttDic = srcObj.structure(stt=sttDic, addSourceColumn=addSourceColumn)
+            # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
+            srcObj.toDB(dstDict=dstDict, stt=sttDic)
+            srcObj.close()
+
+    if mergeConn:
         p("loader->_execLoading: MERGE !!!! " , "i")
         if not dstDict:
             dstDict = srcDict
         _execMerge(dstDict=dstDict, mergeConn=mergeConn, sttDic=None, toCreate=True)
         return
 
-    # Managing Destination table
-    _execTarget(dstDict=dstDict)
-
-    # True / False indication
-    addSourceColumn = False
-    if sttDic and config.STT_INTERNAL in sttDic:
-        addSourceColumn = sttDic[config.STT_INTERNAL]
-        del sttDic[config.STT_INTERNAL]
-
-    srcObj = connector(connDic=srcDict)
-
-    # Check if source is same as target connection (only for merge option)
-    if  srcDict and dstDict and srcDict[eConnValues.connType] == dstDict[eConnValues.connType] and \
-        srcDict[eConnValues.connObj] == dstDict[eConnValues.connObj]:
-        p('loader->execLoading: TYPE: %s, SOURCE and TARGET %s object are identical.. will check if there is merge >>>>>' % (str(srcDict[eConnValues.connType]), str(srcDict[eConnValues.connObj])), "ii")
-
-    else:
-        sttDic = srcObj.structure(stt=sttDic, addSourceColumn=addSourceColumn)
-        # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
-        srcObj.toDB(dstDict=dstDict, stt=sttDic)
-
-
-    #if mergeConn:
-    #    _execMerge (dstDict=dstDict, mergeConn=mergeConn, sttDic=None, toCreate=True)
-
-    srcObj.close()
     if config.LOGS_IN_DB : logsToDb( str(jFileName)+":"+str(dstDict[eConnValues.connName]) )
 
 def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess=None):
@@ -354,9 +351,9 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess
             if toLoad:
                 if srcDic and tarDic:
                     p('loader->_extractNodes: SOURCE %s -> TARET %s ; %s -->  %s .......' % (str(srcDic[ eConnValues.connType ]), str(tarDic[ eConnValues.connType ]), srcDic[ eConnValues.connName ], tarDic[ eConnValues.connName ]), "ii")
-                elif tarDic and mergeConn:
+                if tarDic and mergeConn:
                     p('loader->_extractNodes: Type: %s, TAREGT -> MERGE %s  .......' % (str(tarDic[eConnValues.connType]), tarDic[eConnValues.connName]), "ii")
-                elif srcDic and mergeConn:
+                if srcDic and mergeConn:
                     p('loader->_extractNodes: Type: %s, SOURCE -> MERGE %s  .......' % (str(srcDic[eConnValues.connType]), srcDic[eConnValues.connName]), "ii")
                 # if partition --> change to all partitions
                 # update list of data to process:
@@ -395,7 +392,7 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess
                         processList.append((srcDic, tarDic, mergeConn, sttDic, jFileName, cProc))
                 if tarDic:
                     loadedObject.append("%s; " %(tarDic [ eConnValues.connObj ]))
-                elif mergeConn:
+                if mergeConn:
                     mergTbl = mergeConn[0] if isinstance(mergeConn, (list,tuple)) else mergeConn
                     loadedObject.append("MERGE: %s; " % (mergTbl))
         else:

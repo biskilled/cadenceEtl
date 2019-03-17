@@ -78,7 +78,9 @@ def extract_select_part (parsed):
                             srcName = identifier[:identifier.lower().find(" as")].strip()
                             tarName = identifier[identifier.lower().find(" as")+3:].strip()
                         else:
-                            tarName = srcName
+                            tarName = srcName.split(".")
+                            tarName = tarName[1] if len(tarName)>1 else tarName[0]
+
                         columnList.append( (srcName.split(".") , tarName) )
                 elif isinstance(item, Identifier):
                     item = str(item)
