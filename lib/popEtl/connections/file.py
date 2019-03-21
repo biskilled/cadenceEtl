@@ -54,10 +54,23 @@ class cnFile ():
         self.encoding       = self.cUrl['encoding'] if 'encoding' in connProp else config.FILE_DECODING
         self.errors         = self.cUrl['errors'] if 'errors' in connProp else config.FILE_LOAD_WITH_CHAR_ERR
 
+        head, tail = os.path.split (self.cName)
+        print ("TAL")
+        print (self.cName)
+        print (self.folderPath)
+        print (head, tail)
+        if head and len(head)>1 and tail and len (tail)>1:
+            self.fullPath = self.cName
+        else:
+            self.fullPath = os.path.join(self.folderPath, self.cName)
 
-        p ("file-> init: Delimiter %s, Header %s, Root dir: %s, File: %s " %(str(self.fileDelimiter) , str(self.fileHeader), str(self.folderPath), self.cName ), "ii")
+
+        p ("file-> INIT: %s, Delimiter %s, Header %s " %(str(self.fullPath) , str(self.fileDelimiter) ,str(self.fileHeader) ), "ii")
 
     def close (self):
+        pass
+
+    def truncate(self, tbl=None):
         pass
 
     def getColumns (self):
@@ -160,6 +173,8 @@ class cnFile ():
             p('file->structure: file %s is not exists >>> ' % (str(self.fullPath)), "ii")
 
         return stt
+
+
 
     def _updateRow (self, row ):
         def rep (s):

@@ -173,8 +173,9 @@ class cnDb (object):
         else:
             p("db->create: Table %s cannot create - problem with mappong source columns, src column: %s " %( str(self.cName), str(colList) ), "e")
 
-    def truncate(self):
-        sql = getattr(queries, self.cType + "_truncate")(self.cName)
+    def truncate(self, tbl=None):
+        tbl = tbl if tbl else self.cName
+        sql = getattr(queries, self.cType + "_truncate")(tbl)
 
         self.__executeSQL(sql)
         p("db->truncate: truncate table DB type: %s, table: %s, url: %s" % (self.cType, self.cName, str(self.cUrl)),"ii")
@@ -404,10 +405,10 @@ class cnDb (object):
         return minValue
 
     def execSP (self, sqlQuery ):
-        self.__executeSQL( sqlQuery, direct=True )
+        self.__executeSQL( sqlQuery )
 
-    def merge (self, mergeTable, mergeKeys ):
-        self.__sqlMerge(mergeTable, mergeKeys)
+    def merge (self, mergeTable, mergeKeys, sourceTable=None ):
+        self.__sqlMerge(mergeTable, mergeKeys,sourceTable=sourceTable)
 
     def cntRows (self):
         sql = ""
@@ -422,40 +423,55 @@ class cnDb (object):
         res = rows[0][0] if len(rows)>0 and len (rows[0])>0 else 0
         return res
 
-    def __chunker(self, seq, size):
-        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
+    def select (self, sql):
+        self.__executeSQL(sql=sql, commit=False)
+        return self.cursor.fetchall()
 
-    def __cloneObject(self, colList, tblName=None):
+    def getExistColumns (self, tblName=None):
         existStrucute = []
-        colList = [(str(self.__wrapSql(col=tup[0], remove=False) ),tup[1].lower().replace (" ","")) for tup in colList]
-        tblName = tblName if tblName else  self.cName
+        tblName = tblName if tblName else self.cName
         tblName = self.__wrapSql(col=tblName, remove=True)
         objectExists = self.__objectExists(objName=tblName)
         if (objectExists):
             p("db-> __cloneObject: Table %s is exist >>>>" % (tblName), "ii")
 
-            #get all current strucute of existing table
+            # get all current strucute of existing table
             sql = getattr(queries, self.cType + "_columnDefinition")(tblName)
             self.__executeSQL(sql, commit=False)
 
             rows = self.cursor.fetchall()
             for row in rows:
-                colName = self.__wrapSql(col=row[0],remove=False)
+                colName = self.__wrapSql(col=row[0], remove=False)
                 colType = row[1].lower().replace(' ', '')
-                existStrucute.append((colName, colType ))
+                existStrucute.append((colName, colType))
+        return existStrucute
+
+
+    def __chunker(self, seq, size):
+        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
+
+    def __cloneObject(self, colList, tblName=None):
+        colList = [(str(self.__wrapSql(col=tup[0], remove=False) ),tup[1].lower().replace (" ","")) for tup in colList]
+        tblName = tblName if tblName else  self.cName
+        existStrucute = self.getExistColumns(tblName=tblName)
 
         if config.TABLE_HISTORY:
             p ("db-> __cloneObject: Table History is ON ...","ii")
             oldName     = None
             schemaEqual = True
 
-            if (objectExists):
+            if len(existStrucute)>0:
                 schemaEqual = True if existStrucute == colList  else False
 
                 if not schemaEqual:
+                    srcPost = config.DATA_TYPE['colFrame'][self.cType][1]
+                    if tblName[-1]==srcPost:
+                        tblName=tblName[:-1]
+
                     p("db-> __cloneObject: UPDATE TABLE OLD STRUCTURE : %s " % str(existStrucute))
                     p("db-> __cloneObject: OLD STRUCTURE : %s " %str(existStrucute))
                     p("db-> __cloneObject: NEW STRUCTURE : %s " % str(colList))
+
                     oldName = tblName+"_"+str (time.strftime('%y%m%d'))
                     if (self.__objectExists(objName=oldName)):
                         num = 1
@@ -478,7 +494,7 @@ class cnDb (object):
                     p("db-> __cloneObject: No changes made in table %s >>>>>" % (tblName), "ii")
                     return False
         else:
-            if (objectExists):
+            if len(existStrucute)>0:
                 p("db-> __cloneObject: Table History is OFF, table exists, will drop table %s... " % (str(tblName)), "ii")
                 sql = eval (self.cType+"_renameTable("+tblName+")")
                 self.__executeSQL(sql)
@@ -498,19 +514,13 @@ class cnDb (object):
         p ("db-> __objectExists: Table %s is not exists ..." %(str (objName)) , "ii")
         return False
 
-    def __executeSQL(self, sql, commit=True, direct=False):
+    def __executeSQL(self, sql, commit=True):
         if not (isinstance(sql, (list,tuple))):
             sql = [sql]
         try:
             for s in sql:
                 s = unicode(s)
-                if direct:
-                    #self.conn.autocommit = True
-                    self.cursor.execdirect(s)
-                    #self.conn.autocommit = False
-                else:
-                    self.cursor.execute(s)  # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(s)
-
+                self.cursor.execute(s)  # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(s)
             if commit:
                 self.conn.commit()          # if 'ceodbc' in odbc.__name__.lower() else self.cursor.commit()
             return True
@@ -538,13 +548,20 @@ class cnDb (object):
         p ('db-> __schemaCompare: table %s structure changed, old: %s, new: %s >>>>' %(self.cName, str(self.cColumns), str(colList) ), "ii")
         return False
 
-    def __sqlMerge(self, mergeTable, mergeKeys):
+    def __sqlMerge(self, mergeTable, mergeKeys,sourceTable):
         dstTable = self.__wrapSql(col=mergeTable, remove=False)
-        srcTable = self.__wrapSql(col=self.cName, remove=False)
-        if self.cSchema:
-            srcTable = "%s.%s" %(self.__wrapSql(col=self.cSchema, remove=False),srcTable)
 
-        srcCol = [c[0] for c in self.cColumns]
+        if sourceTable:
+            columns = self.getExistColumns(tblName=sourceTable)
+            srcCol = [c[0] for c in columns]
+        else:
+            srcTable = self.__wrapSql(col=self.cName, remove=False)
+            if self.cSchema:
+                srcTable = "%s.%s" % (self.__wrapSql(col=self.cSchema, remove=False), srcTable)
+
+            self.cColumns = self.getColumns()
+            srcCol = [c[0] for c in self.cColumns]
+
         trgCol = srcCol
         # test
         colList     = []
@@ -577,13 +594,13 @@ class cnDb (object):
         colType     = None
         colTbl      = None
         colName     = None
-        colList     = col.split(".")
-        if len(colList) == 2:
-            tblName = colList[0]
-            colNameL = colList[1].lower()
-        else:
-            tblName = None
-            colNameL = colList[0].lower()
+        #colList     = col.split(".")
+        #if len(colList) == 2:
+        #    tblName = colList[0]
+        #    colNameL = colList[1].lower()
+        #else:
+        tblName = None
+        colNameL = col.lower()
 
         if tblName and tblName in allTableStrucure:
             if colNameL in allTableStrucure[tblName]:
@@ -640,7 +657,8 @@ class cnDb (object):
 
             # Update alldistinctColumn
             for col in allColumnsList:
-                colSplit = col.split(".")
+                colSplit = col.split(".",1)
+
                 alldistinctColumn.append ( ('',colSplit[0]) if len(colSplit)==1 else (colSplit[0],colSplit[1]) )
 
             # update allTableStrucure dictionary : {tblName:{col name : ([original col name] , [tbl name] , [col structure])}}
@@ -660,7 +678,7 @@ class cnDb (object):
             # Create source mapping -> tableStructure
             # update mappingDic if there is column mapping
 
-            for i , col in enumerate(alldistinctColumn):
+            for i, col in enumerate( alldistinctColumn ):
                 targetName = allColumnsTarget[i]
                 colType, colTbl, colName = self.__sqlQueryMappingHelp (allTableStrucure, col[1])
                 if colName:

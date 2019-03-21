@@ -245,3 +245,36 @@ def getDicKey (etlProp, allProp):
             return isExists.pop()
     return None
 
+def filterFiles (modelToExec, dirData=None, includeFiles=None, notIncludeFiles=None ):
+    dirData          = dirData if dirData else config.DIR_DATA
+    notIncludeFiles = notIncludeFiles if notIncludeFiles else config.FILES_NOT_INCLUDE
+    notIncludeFilesL=[x.lower().replace(".json","") for x in notIncludeFiles]
+    includeFiles    = includeFiles if includeFiles else config.FILES_INCLUDE
+
+    jsonFiles = [pos_json for pos_json in os.listdir(dirData) if pos_json.endswith('.json')]
+
+    jsonFilesDic    = {x.lower().replace(".json",""):x for x in jsonFiles}
+
+
+
+    if  notIncludeFiles:
+        notIncludeDict = {x.lower().replace(".json", ""): x for x in notIncludeFiles}
+        for f in jsonFilesDic:
+            if f in notIncludeDict:
+                p('%s: NOT INCLUDE: Folder:%s, file: %s NOT IN USED, REMOVED >>>>' % (modelToExec, str(config.DIR_DATA), f),"ii")
+                jsonFiles.remove( jsonFilesDic[f] )
+        for f in notIncludeDict:
+            if f not in jsonFilesDic:
+                p('%s: NOT INCLUDE: Folder: %s, file: %s not exists.. Ignoring>>>>>' % (modelToExec, str(config.DIR_DATA), f), "ii")
+
+    if  includeFiles:
+        includeDict = {x.lower().replace(".json", ""): x for x in includeFiles}
+        for f in jsonFilesDic:
+            if f not in includeDict:
+                p('%s: INCLUDE: Folder:%s, file: %s NOT IN USED, REMOVED >>>>'% (modelToExec, str(config.DIR_DATA), f), "ii")
+                jsonFiles.remove( jsonFilesDic[f] )
+        for f in includeDict:
+            if f not in jsonFilesDic:
+                p('%s: INCLUDE: Folder: %s, file: %s not exists.. Ignoring >>>>' % (modelToExec, str(config.DIR_DATA), f), "ii")
+
+    return jsonFiles

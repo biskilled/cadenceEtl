@@ -68,6 +68,7 @@ class config:
     SEQ_DEFAULT_SEQ_INC     = 1
 
     FILES_NOT_INCLUDE = []
+    FILES_INCLUDE     = []
 
     NUM_OF_PROCESSES        = 1
     NUM_OF_LOADING_THREAD   = 1
@@ -95,7 +96,7 @@ class config:
      'schema'   :{'sql':'dbo',                          'oracle':None,                                                                  'access':'text'},
      'null'     :{'sql':'NULL',                         'oracle':'NULL',                                                            'file':'NULL'},
      'sp'       :{'sql':{'match':r'([@].*[=])(.*?(;|$))', 'replace':r"[=;@\s']"}},
-     'colFrame' :{'sql':("[","]"), 'oracle':("\"","\""), 'access':("[","]")}
+     'colFrame' :{'sql':("[","]"), 'oracle':("\"","\""), 'access':("[","]"), 'file':('','')}
     }
 
     PARSER_SQL_MAIN_KEY = "popEtl"

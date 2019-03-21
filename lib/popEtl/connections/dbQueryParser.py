@@ -93,19 +93,20 @@ def extract_select_part (parsed):
                     columnList.append( (srcName.split(".") , tarName) )
 
     for tupCol in columnList:
+
         col     = tupCol[0]
         tarName = tupCol[1]
-        if col and len (col) == 2:
-            dicKey = col[0]
-            dicValue = col[0]+"."+col[1]
-            if dicKey not in columnDic:
-                columnDic[dicKey] = []
-
-        elif col and len (col) == 1:
+        if col and len (col) == 1:
             dicKey = nonColumnSign
             dicValue = col[0]
+        elif col and len (col) >= 2:
+            dicKey = col[0]
+            dicValue = ".".join(col)
+            dicValue = dicValue.replace("\n", " ")
+            if dicKey not in columnDic:
+                columnDic[dicKey] = []
         else:
-            p("queryParser->extract_select_part: ERROR Loading column identifier, will ignore column %s" % str(col), "i")
+            p("dbQueryParser->extract_select_part: ERROR Loading column identifier, will ignore column %s" % str(col), "i")
             continue
 
         columnDic[allColumnSign].append( dicValue )
@@ -115,6 +116,7 @@ def extract_select_part (parsed):
         columnDic[dicKey].append (dicValue)
 
     return columnDic
+
 
 def extract_table_identifiers(token_stream):
     for item in token_stream:
@@ -138,6 +140,7 @@ def extract_tables(sql):
     extracted_last_columns_Dic = None
     # replacements to SQL queries
     sql = replaceStr (sString=sql,findStr="ISNULL (", repStr="ISNULL(", ignoreCase=True,addQuotes=None)
+    sql = sql.replace("\t"," ")
     statements = list(sqlparse.parse(sql))
 
     for statement in statements:

@@ -25,7 +25,7 @@ import io
 from collections            import OrderedDict
 
 from popEtl.config          import config
-from popEtl.glob.glob       import p, setDicConnValue, getDicKey
+from popEtl.glob.glob       import p, setDicConnValue, getDicKey, filterFiles
 from popEtl.glob.enums      import eConnValues, ePopEtlProp
 from popEtl.glob.globalDBFunctions import checkSequence, logsToDb
 from popEtl.connections.connector  import connector
@@ -288,9 +288,7 @@ def model (dicObj=None, sourceList=None, destList=None):
         p('mapper->model: loading from Dictionary  >>>>>' , "ii")
         _extractNodes(jText=dicObj, jFileName='', sourceList=sourceList, destList=destList)
     else:
-        jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
-        for f in list (jsonFiles):
-            if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
+        jsonFiles = filterFiles (modelToExec="mapper->model", dirData=None, includeFiles=None, notIncludeFiles=None )
 
         for index, js in enumerate(jsonFiles):
             with io.open(os.path.join(config.DIR_DATA, js), encoding='utf-8') as jsonFile:

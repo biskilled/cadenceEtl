@@ -26,7 +26,7 @@ import io
 from collections import OrderedDict, Counter
 
 from popEtl.config                  import config
-from popEtl.glob.glob               import p, setQueryWithParams, getDicKey, setDicConnValue
+from popEtl.glob.glob               import p, setQueryWithParams, getDicKey, setDicConnValue, filterFiles
 from popEtl.glob.enums              import eConnValues, ePopEtlProp
 from popEtl.connections.dbSqlLite   import sqlLite
 from popEtl.connections.connector   import connector
@@ -81,6 +81,8 @@ def _execMerge (dstDict, mergeConn, sttDic, toCreate=True):
     if isinstance( mergeConn , (list,tuple) ):
         mergeTable = mergeConn[0]
         mergeKeys  = mergeConn[1]
+        if len (mergeConn) == 3:
+            toCreate = mergeConn[2]
     else:
         mergeTable = mergeConn
 
@@ -422,9 +424,8 @@ def trasnfer (dicObj=None, sourceList=None, destList=None):
         p('loader->loading: loading from Dictionary >>>>>' , "ii")
         loadedObject = _extractNodes(jText=dicObj, jFileName='', sourceList=sourceList, destList=destList)
     else:
-        jsonFiles = [pos_json for pos_json in os.listdir(config.DIR_DATA) if pos_json.endswith('.json')]
-        for f in list(jsonFiles):
-            if f in config.FILES_NOT_INCLUDE:   jsonFiles.remove(f)
+        jsonFiles = filterFiles(modelToExec="loader->loading", dirData=None, includeFiles=None, notIncludeFiles=None)
+
         for index, js in enumerate(jsonFiles):
             with io.open(os.path.join(config.DIR_DATA, js), encoding="utf-8") as jsonFile:           #
                 jText = json.load(jsonFile, object_pairs_hook=OrderedDict)

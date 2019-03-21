@@ -10,9 +10,10 @@ def _removeComments (listQuery, endOfLine='\n'):
             isTup = True
         else:
             post = s.strip()
-        post = re.sub(r"--.*[\n$]", r"", post, flags=re.DOTALL| re.IGNORECASE | re.MULTILINE | re.UNICODE | re.S ).replace ("--","")
+
+        post = re.sub(r"--.*$", r"",    post, flags= re.IGNORECASE | re.MULTILINE | re.UNICODE  ).replace ("--","")
         post = re.sub(r'\/\*.*\*\/',    "", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL )
-        post = re.sub(r"print .*[$\n]", "", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.S )
+        post = re.sub(r"print .*$", r"",post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE ).replace ("print ","")
 
         if endOfLine:
             while len (post)>1 and post[0:1] == "\n":
