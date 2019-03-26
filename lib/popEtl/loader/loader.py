@@ -233,7 +233,7 @@ def _updateSourceTargetCompareLog (js):
 def _execLoading ( params ):
     (srcDict, dstDict, mergeConn, sttDic, jFileName, cProc, tProc) = params
     if srcDict and dstDict:
-        p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(srcDict[eConnValues.connName])), "i")
+        p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(dstDict[eConnValues.connName])), "i")
 
         # Managing Destination table
         _execTarget(dstDict=dstDict)
@@ -245,6 +245,7 @@ def _execLoading ( params ):
             del sttDic[config.STT_INTERNAL]
 
         srcObj = connector(connDic=srcDict)
+        dstObj = connector(connDic=dstDict)
 
         # Check if source is same as target connection (only for merge option)
         if  srcDict[eConnValues.connType] == dstDict[eConnValues.connType] and \
@@ -254,8 +255,9 @@ def _execLoading ( params ):
         else:
             sttDic = srcObj.structure(stt=sttDic, addSourceColumn=addSourceColumn)
             # isSQL, columnInc, columnStart = addIncemenral (inc, isSQL, srcObj, srcMapping)
-            srcObj.toDB(dstDict=dstDict, stt=sttDic)
+            srcObj.transferToTarget(dstObj=dstObj, sttDic=sttDic)
             srcObj.close()
+            dstObj.close()
 
     if mergeConn:
         p("loader->_execLoading: MERGE !!!! " , "i")

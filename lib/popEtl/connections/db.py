@@ -19,6 +19,7 @@
 import time
 import sys
 import os
+import traceback
 
 import multiprocessing.pool as mpool
 from collections import OrderedDict
@@ -67,6 +68,8 @@ class cnDb (object):
         self.cWhere     = connDic [ eConnValues.connFilter ] if connDic else connFilter
         self.cColoumnAs = True
 
+        self.insertSql  = None
+
         if not self.cType or not isDbType(self.cType):
             p ("Connection type is not valid: %s, use connection from config file" %(str(self.cType)) )
             return
@@ -87,12 +90,10 @@ class cnDb (object):
             if 'nls' in self.cUrl:
                 os.environ["NLS_LANG"] = self.cUrl['nls']
             self.cursor = self.conn.cursor()
-
         elif eDbType.ACCESS == self.cType:
             self.conn       = odbc.connect (self.cUrl) # , ansi=True
             self.cursor     = self.conn.cursor()
             self.cColoumnAs = False
-
         else:
             self.conn = odbc.connect (self.cUrl) #ansi=True
             self.cursor = self.conn.cursor()
@@ -254,81 +255,118 @@ class cnDb (object):
         self.cColumns = tableStructure
         return stt
 
-    def toTarget (self,  results, tarSQL, dstDic, fnDic, numOfRows):
-        try:
-            targetObj = cnDb(connDic=dstDic)
-            targetObj.cursor.executemany(tarSQL, results)
-            targetObj.conn.commit()
-            p('db->toTarget: FINISH Loading total of %s rows into target :%s ' % (str(numOfRows), str(dstDic[eConnValues.connObj])), "ii")
-            targetObj.close()
-        except Exception as e:
-            p("db->toTarget: type: %s, name: %s ERROR in targetObj.cursor.executemany" % (self.cType, str(self.cName)), "e")
-            p("db->toTarget: ERROR, target query: %s " % str(tarSQL), "e")
-            p("db->toTarget: ERROR, sample result: %s " % str(results[0]), "e")
-            p(e, "e")
+    def loadData(self, srcVsTar, results, numOfRows, cntColumn):
+        if self.cIsSql:
+            p("db->loadData: Object is query... connot load data, %s " %(self.cName))
+            return
 
-            if targetObj and config.RESULT_LOOP_ON_ERROR:
-                p("db->toTarget: ERROR, will start to loading row by row  ", "e")
+        if results and numOfRows>0:
+            tarSQL = "INSERT INTO " + self.cName + " "
+            if srcVsTar and len(srcVsTar)>0:
+                tarL = [self.__wrapSql(col=t[1], remove=False, cType=self.cType) for t in srcVsTar]
+                tarSQL += "(" + ','.join(tarL) + ") "
+                tarSQL += "VALUES (" + ",".join(["?" for x in range(len(tarL))]) + ")"
+            else:
+                cntColumn = cntColumn if cntColumn else len (results[0])
+                tarSQL += "VALUES (" + ",".join(["?" for x in range(cntColumn)]) + ")"
 
-                iCnt = 0
-                tCnt = len (results)
-                for r in results:
-                    try:
-                        iCnt+=1
-                        r = [r]
-                        targetObj.cursor.executemany(tarSQL, r)
-                        targetObj.conn.commit()
-                    except Exception as e:
-                        ret = ""
-                        for col in r[0]:
-                            if col is None:
-                                ret += str(col) + ","
-                            elif str(col).replace(".", "").replace(",", "").isdigit():
-                                ret += str(col) + " ,"
-                            else:
-                                ret += "'" + str(col) + "' ,"
-                        p("db->toTarget: ERROR, LOOPING ON ALL RESULTS, ROW ERROR ", "e")
-                        p(e, "e")
-                        p(tarSQL, "e")
-                        p(ret, "e")
-                targetObj.close()
-                p("db->toTarget: ERROR Row by row: loader %s out of %s  " %(str(iCnt),str(tCnt)) , "e")
+            try:
+                self.cursor.executemany(tarSQL, results)
+                self.conn.commit()
+                p('db->loadData: Load %s into target: %s >>>>>> ' % (str(numOfRows), self.cName), "ii")
+            except Exception as e:
+                p("db->loadData: type: %s, name: %s ERROR in cursor.executemany !!!!" % (self.cType, str(self.cName)), "e")
+                p("db->loadData: ERROR, target query: %s " % str(tarSQL), "e")
+                p("db->loadData: ERROR, sample result: %s " % str(results[0]), "e")
+                p(e, "e")
+
+                if config.RESULT_LOOP_ON_ERROR:
+                    p("db->loadData: ERROR, Loading row by row  ", "e")
+                    iCnt = 0
+                    tCnt = len (results)
+                    for r in results:
+                        try:
+                            iCnt+=1
+                            r = [r]
+                            self.cursor.executemany(tarSQL, r)
+                            self.conn.commit()
+                        except Exception as e:
+                            ret = ""
+                            for col in r[0]:
+                                if col is None:
+                                    ret += str(col) + ","
+                                elif str(col).replace(".", "").replace(",", "").isdigit():
+                                    ret += str(col) + " ,"
+                                else:
+                                    ret += "'" + str(col) + "' ,"
+                            p("db->loadData: ERROR, LOOPING ON ALL RESULTS, ROW ERROR ", "e")
+                            p(e, "e")
+                            p(tarSQL, "e")
+                            p(ret, "e")
+                    p("db->loadData: ERROR Row by row: loader %s out of %s  " %(str(iCnt),str(tCnt)) , "e")
         return
 
-    def dbIter(self, tarSQL, dstDict, fnDic):
+    def transferToTarget(self, dstObj, srcVsTar, fnDic, pp):
+        srcSql = self.__dbMapSrcVsTarget(srcSql=self.cSQL, srcVsTar=srcVsTar)
+        try:
+            self.__executeSQL(str(srcSql), commit=False)
+            columnsInSOurce     = [x[0] for x in self.cursor.description]
+            totalColumnInSource = len(columnsInSOurce)
+
+            p ('db->transferToTarget: Loading total columns:%s, object name: %s  ' %(str(totalColumnInSource), str(self.cName)),"ii")
+            self.__parallelProcessing (dstObj=dstObj, srcVsTar=srcVsTar, fnDic=fnDic, pp=pp,  cntColumn=totalColumnInSource)
+
+        except Exception as e:
+            p("db->transferToTarget: ERROR Exectuging query: %s, type: %s >>>>>>" % (srcSql, self.cType) , "e")
+            p(str(e), "e")
+
+    def __dbMapSrcVsTarget ( self,srcSql, srcVsTar ):
+        # there is column mapping or function mapping
+        if not srcVsTar or len(srcVsTar)==0:
+            return srcSql
+
+        stcSelect = srcSql.lower().replace("\n", " ").find("select ")
+        stcFrom   = srcSql.lower().replace("\n", " ").find(" from ")
+
+        if stcSelect > -1 and stcFrom > 0:
+            preSrcSql = srcSql[:stcSelect + 7]
+            postSrcSql= srcSql[stcFrom:]
+            newCol    = ""
+            for tup in srcVsTar:
+                if self.cIsSql:
+                    srcC = tup[0]
+                else:
+                    srcC = self.__wrapSql(col=tup[0], remove=False) if tup[0] != "''" else tup[0]
+
+                srcT = self.__wrapSql(col=tup[1], remove=False)
+                newCol += srcC + " AS " + srcT + "," if self.cColoumnAs else srcC + ","
+
+            newCol = newCol[:-1]
+            srcSql = preSrcSql + newCol + postSrcSql
+            p("db->__dbMapSrcVsTarget: there is mapping, update to new sql query: %s " % (srcSql), "ii")
+        return srcSql
+
+    def __parallelProcessing (self, dstObj, srcVsTar, fnDic, pp, cntColumn=None):
         numOfRows = 0
         iCnt      = 0
         pool = mpool.ThreadPool(config.NUM_OF_LOADING_THREAD)
+
         'An iterator that uses fetchmany to keep memory usage down'
         while True:
             try:
-                results = self.cursor.fetchmany(config.RESULT_ARRAY_SIZE)
-                if fnDic and len(fnDic) > 0:
-                    for cntRows, r in enumerate(results):
-                        r = list(r)
-                        for pos, fnList in fnDic.items():
-                            if not isinstance(pos, tuple):
-                                uColumn = r[pos]
-                                for f in fnList:
-                                    uColumn = f.handler(uColumn)
-                                r[pos] = uColumn
-                            else:
-                                fnPos = fnList[0]
-                                fnStr = fnList[1]
-                                fnEval = fnList[2]
-                                newVal = [str(r[cr]).decode(config.FILE_DECODING) for cr in pos]
-                                newValStr = unicode(fnStr).format(*newVal)
-                                r[fnPos] = eval(newValStr) if fnEval else newValStr
-                        results[cntRows] = r
+                if pp:
+                    results = self.cursor.fetchmany(config.RESULT_ARRAY_SIZE)
+                else:
+                    results = self.cursor.fetchall()
+                results = self.__functionResultMapping( results, fnDic)
             except Exception as e:
-                p("db->doIter: type: %s, name: %s ERROR in cursor.fetchmany" %(self.cType, str(self.cName)), "e")
+                p("db->__parallelProcessing: type: %s, name: %s ERROR in cursor.fetchmany" %(self.cType, str(self.cName)), "e")
                 p(str(e), "e")
                 break
             if not results or len(results)<1:
                 break
             numOfRows+=len(results)
-            p('db->Iter: Loading total of %s rows , target :%s ' % (str(numOfRows), str(dstDict[eConnValues.connObj] )), "ii")
-            pool.apply_async(func=self.toTarget,args=(results, tarSQL, dstDict, fnDic, numOfRows))  #callback=log_result
+            pool.apply_async(func=self.__parallelProcessingLoad,args=(dstObj, srcVsTar, results, numOfRows, cntColumn))
             if iCnt < config.NUM_OF_LOADING_THREAD:
                 iCnt+=1
             else:
@@ -340,55 +378,33 @@ class cnDb (object):
             pool.close()
             pool.join()
 
-    def toDB (self, dstDict, tarL, srcL, fnDic):
-        srcSql          = self.cSQL
-        TargetTableType = dstDict [ eConnValues.connType ]
-        TargetTableName = dstDict [ eConnValues.connObj ]
-
-        tarSQL  = "INSERT INTO "+TargetTableName+" "
-
-        # there is column mapping or function mapping
-        if len (tarL)>0:
-            tarPre, tarPost = config.DATA_TYPE['colFrame'][TargetTableType]
-            srcPre, srcPost = config.DATA_TYPE['colFrame'][self.cType]
-            stcSelect= srcSql.lower().replace ("\n"," ").find("select ")
-            stcFrom  = srcSql.lower().replace ("\n"," ").find(" from ")
-
-            if stcSelect>-1 and stcFrom>0:
-                preSrcSql   = srcSql[:stcSelect+7]
-                postSrcSql  = srcSql[stcFrom:]
-                newCol = ""
-                for i,t in enumerate(tarL):
-                    if self.cIsSql:
-                        srcC = srcL[i]
-                    else:
-                        srcC =  self.__wrapSql(col=srcL[i], remove=False)  if srcL[i] != "''" else srcL[i]
-
-                    srcT = self.__wrapSql(col=t, remove=False)
-                    newCol += srcC + " AS " + srcT + "," if self.cColoumnAs else srcC + ","
-
-                newCol = newCol[:-1]
-                srcSql = preSrcSql + newCol + postSrcSql
-                p("db->toDB: there is mapping, update to new sql query: %s " % (srcSql), "ii")
-
-            tarL = [self.__wrapSql(col=t,remove=False, cType=TargetTableType) for t in tarL]
-            tarSQL +=  "(" + ','.join(tarL) + ") "
-            tarSQL += "VALUES (" + ",".join(["?" for x in range(len(tarL))]) + ")"
-
+    def __parallelProcessingLoad (self, dstObj, srcVsTar, results, numOfRows, cntColumn=None):
         try:
-            self.__executeSQL(str(srcSql), commit=False)
-            p ('db->toDB: Loading total rows: %s, Excecuting sql %s ' %(str (self.cursor.rowcount), str (srcSql)),"ii")
-            columnsInSOurce = [x[0] for x in self.cursor.description]
-            totalColumnInSource = len(columnsInSOurce)
-
-            if len (tarL)<1:
-                tarSQL += "VALUES (" + ",".join(["?" for x in range(totalColumnInSource)]) + ")"
-
-            self.dbIter(tarSQL=tarSQL, dstDict=dstDict, fnDic=fnDic)
-
+            return dstObj.loadData (srcVsTar, results, numOfRows, cntColumn)
         except Exception as e:
-            p("db->toDB: ERROR Exectuging query: %s, type: %s >>>>>>" % (srcSql, self.cType) , "e")
-            p(str(e), "e")
+            p(e,'e')
+            traceback.print_exc()
+            raise e
+
+    def __functionResultMapping (self, results,fnDic):
+        if fnDic and len(fnDic) > 0 and results:
+            for cntRows, r in enumerate(results):
+                r = list(r)
+                for pos, fnList in fnDic.items():
+                    if not isinstance(pos, tuple):
+                        uColumn = r[pos]
+                        for f in fnList:
+                            uColumn = f.handler(uColumn)
+                        r[pos] = uColumn
+                    else:
+                        fnPos = fnList[0]
+                        fnStr = fnList[1]
+                        fnEval = fnList[2]
+                        newVal = [str(r[cr]).decode(config.FILE_DECODING) for cr in pos]
+                        newValStr = unicode(fnStr).format(*newVal)
+                        r[fnPos] = eval(newValStr) if fnEval else newValStr
+                results[cntRows] = r
+        return results
 
     def minValues (self, colToFilter, resolution=None, periods=None, startDate=None):
         # there is min value to
@@ -445,7 +461,6 @@ class cnDb (object):
                 colType = row[1].lower().replace(' ', '')
                 existStrucute.append((colName, colType))
         return existStrucute
-
 
     def __chunker(self, seq, size):
         return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))

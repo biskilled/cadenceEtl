@@ -24,54 +24,51 @@ import shutil
 import time
 import csv
 import io
+import codecs
 import pandas as pd
+from collections import OrderedDict
 
 from popEtl.config          import config
 from popEtl.glob.glob       import p
-from popEtl.glob.enums      import eConnValues
-from popEtl.connections.db  import cnDb
+from popEtl.glob.enums      import eConnValues, eDbType
+
 
 class cnFile ():
-    def __init__ (self, connDic):
-
-        self.cName      = connDic [ eConnValues.connObj ]
-        self.cType      = connDic [ eConnValues.connType ]
-        self.columns    = []
-        self.cUrl       = connDic [ eConnValues.connUrl ]
+    def __init__ (self, connDic, connName=None, connFolder=None, fileHeader=[]):
+        self.cName      = connDic [ eConnValues.connObj ]  if connDic else connName
+        self.cType      = connDic [ eConnValues.connType ] if connDic else eDbType.FILE
+        self.folderPath = connDic [ eConnValues.connUrl ]  if connDic else connFolder
+        self.fileHeader = fileHeader
         self.cursor     = None
         self.conn       = None
         self.cColumns   = None
 
-        self.header     = None
-        self.fnDic      = None
-
-        connProp = self.cUrl.keys()
-        self.fileDelimiter  = self.cUrl['delimiter'] if 'delimiter' in connProp else config.FILE_DEFAULT_DELIMITER
-        self.fileHeader     = self.cUrl['header'] if 'header' in connProp else config.FILE_DEFAULT_HEADER
-        self.folderPath     = self.cUrl['folder'] if 'folder' in connProp else config.FILE_DEFAULT_FOLDER
+        if isinstance(self.folderPath, (dict, OrderedDict)):
+            connProp = self.folderPath.keys()
+        self.fileDelimiter  = self.folderPath['delimiter']  if 'delimiter'   in connProp    else config.FILE_DEFAULT_DELIMITER
+        self.fileHeader     = self.folderPath['header']     if 'header' in connProp         else config.FILE_DEFAULT_HEADER
+        self.folderPath     = self.folderPath['folder']     if 'folder' in connProp         else config.FILE_DEFAULT_FOLDER
         self.fullPath       = os.path.join(self.folderPath, self.cName)
-        self.newLine        = self.cUrl['newLine'] if 'newLine' in connProp else config.FILE_DEFAULT_NEWLINE
-        self.encoding       = self.cUrl['encoding'] if 'encoding' in connProp else config.FILE_DECODING
-        self.errors         = self.cUrl['errors'] if 'errors' in connProp else config.FILE_LOAD_WITH_CHAR_ERR
+        self.newLine        = self.folderPath['newLine']    if 'newLine' in connProp        else config.FILE_DEFAULT_NEWLINE
+        self.encoding       = self.folderPath['encoding']   if 'encoding' in connProp       else config.FILE_DECODING
+        self.errors         = self.folderPath['errors']     if 'errors' in connProp         else config.FILE_LOAD_WITH_CHAR_ERR
 
         head, tail = os.path.split (self.cName)
-        print ("TAL")
-        print (self.cName)
-        print (self.folderPath)
-        print (head, tail)
         if head and len(head)>1 and tail and len (tail)>1:
             self.fullPath = self.cName
         else:
             self.fullPath = os.path.join(self.folderPath, self.cName)
-
-
         p ("file-> INIT: %s, Delimiter %s, Header %s " %(str(self.fullPath) , str(self.fileDelimiter) ,str(self.fileHeader) ), "ii")
 
     def close (self):
         pass
 
     def truncate(self, tbl=None):
-        pass
+        if os.path.isfile(self.fullPath):
+            os.remove(self.fullPath)
+            p("file->truncate: %s is deleted " %(self.fullPath))
+        else:
+            p("file->truncate: %s is not exists " % (self.fullPath))
 
     def getColumns (self):
         if self.cColumns and len(self.cColumns)>0:
@@ -174,7 +171,28 @@ class cnFile ():
 
         return stt
 
+    def loadData(self, srcVsTar, results, numOfRows, cntColumn):
+        headerList = None
+        if self.fileHeader:
+            if srcVsTar:
+                headerList = [t[1] for t in srcVsTar]
+            else:
+                headerList = ["col%s" %i for i in range ( cntColumn ) ]
 
+        with codecs.open( filename=self.fullPath, mode='wb', encoding="utf8") as f:
+            #wCsv = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            #wCsv.writerow(headerList)
+            if headerList:
+                f.write (u",".join(headerList))
+                f.write("\n")
+
+            for row in results:
+                row = [unicode(s)  for s in row]
+                f.write(u",".join(row))
+                f.write("\n")
+
+        p('file->loadData: Load %s into target: %s >>>>>> ' % (str(numOfRows), self.fullPath), "ii")
+        return
 
     def _updateRow (self, row ):
         def rep (s):
@@ -203,97 +221,6 @@ class cnFile ():
                     else:
                         ret[fnPos] = eval(newValStr) if fnEval else newValStr
         return ret
-
-    def toDB (self, dst, tarL, srcL, fnDic):
-        self.fnDic = fnDic
-        TargetTableType = dst[0]
-        TargetTableName = dst[1]
-        split_line = None
-        tarSQL  = "INSERT INTO "+TargetTableName+" "
-
-        try:
-            # there is column mapping or function mapping
-            if len (tarL)>0:
-                tarPre, tarPost = config.DATA_TYPE['colFrame'][TargetTableType]
-
-                tarL = [tarPre + t + tarPost for t in tarL]
-                tarSQL +=  "(" + ','.join(tarL) + ") "
-                tarSQL += "VALUES (" + ",".join(["?" for x in range(len(tarL))]) + ")"
-
-            dataArr = []
-            if not self.fileHeader:
-                self.header = []
-                for i , col in enumerate(srcL):
-                    col = col.replace (config.FILE_DEF_COLUMN_PREF, "")
-                    if col.isdigit():
-                        self.header.append (int(col))
-                    else:
-                        self.header.append(i)
-            with io.open (self.fullPath, 'r', encoding=self.encoding, errors=self.errors) as fFile: # encoding='windows-1255' encoding='utf8'
-            #    #textFile = csv.reader(fFile, delimiter=self.fileDelimiter, quotechar="'", quoting=csv.QUOTE_NONNUMERIC)
-                for i, line in enumerate(fFile):
-                    line = line.strip(config.FILE_DEFAULT_NEWLINE)
-                    split_line = line.split(self.fileDelimiter)
-                    if self.fileHeader and i==0:
-                        self.header = []
-                        split_line = [c.strip() for c in split_line]
-                        if len (srcL)>0:
-                            for i, sCol in enumerate(srcL):
-                                if sCol.strip() in split_line:
-                                    self.header.append (split_line.index(sCol))
-                                elif sCol == "''":
-                                    self.header.append(sCol)
-                                else:
-                                    p ("file->toDB: Loading %s, column %s mapped but not found in file headers, ignoring %s ..." %(str(self.fullPath), str(sCol), str(split_line)))
-                        continue
-
-                    split_line = self._updateRow(split_line)
-                    dataArr.append(split_line)
-                    if config.FILE_MAX_LINES_PARSE>0 and i>0 and i%config.FILE_MAX_LINES_PARSE == 0:
-                        self.toTarget(dataArr, tarSQL, dst, fnDic, i)
-                        dataArr = list ([])
-                if len(dataArr)>0 : #and split_line:
-                    self.toTarget(dataArr, tarSQL, dst, fnDic, i)
-
-        except Exception as e:
-            p("db->toDB: ERROR loading file: %s, type: %s >>>>>>" % (self.cName, self.cType) , "e")
-            p(str(e), "e")
-
-    def toTarget(self, results, tarSQL, dst, fnDic, numOfRows):
-        targetObj = None
-        try:
-            targetObj = cnDb(dst[1], conType=dst[0])
-            targetObj.cursor.executemany(tarSQL, results)
-            targetObj.conn.commit()
-            p('file->toTarget: FINISH Loading total of %s rows into target :%s ' % (str(numOfRows), str(dst[1])), "ii")
-            targetObj.close()
-        except Exception as e:
-            p("file->toTarget: type: %s, name: %s ERROR in targetObj.cursor.executemany" % (self.cType, str(self.cName)),"e")
-            p("file->toTarget: ERROR, target query: %s " % str(tarSQL), "e")
-            p("file->toTarget: ERROR, sample result: %s " % str(results[0]), "e")
-            p(str(e), "e")
-            if targetObj and config.RESULT_LOOP_ON_ERROR :
-                for r in results:
-                    try:
-                        r = [r]
-                        targetObj.cursor.executemany(tarSQL, r)
-                        targetObj.conn.commit()
-
-                    except Exception as e:
-                        ret = ""
-                        for col in r[0]:
-                            if col is None:
-                                ret += str(col)+","
-                            elif str(col).replace(".","").replace(",","").isdigit():
-                                ret+=str(col)+" ,"
-                            else :
-                                ret += "'" + str(col) + "' ,"
-                        p("file->toTarget: ERROR, LOOPING ON ALL RESULTS, ROW ERROR " , "e")
-                        p(str(e), "e")
-                        p(tarSQL, "e")
-                        p(ret,"e")
-                targetObj.close()
-        return
 
     def dfToTable(self, df, ifExists='truncate', seq=None, index=False,chunksize=None):
         p("file->dfToTable: tranfering to file %s from data frame  >>>" % self.fullPath, "ii")

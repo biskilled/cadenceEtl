@@ -18,7 +18,7 @@
 from popEtl.config                  import config
 from popEtl.glob.loaderFunctions    import *
 from popEtl.glob.glob               import p
-from popEtl.glob.enums              import eConnValues
+from popEtl.glob.enums              import eConnValues, eDbType
 
 from popEtl.connections.db     import cnDb
 from popEtl.connections.file   import cnFile
@@ -78,36 +78,34 @@ class connector ():
         p ("CONNECTOR->execSP: schema:%s, name: %s, executing query %s " %(self.cType, self.cName,sqlQuery) ,"ii")
         return self.objClass.execSP (sqlQuery)
 
-    def toDB(self, dstDict, stt=None):
-        dstType = dstDict [ eConnValues.connType ]
-        dstName = dstDict [ eConnValues.connObj ]
-        p("CONNECTOR->toDB: Transfer data from %s, type: %s to %s, type: %s " % (self.cName,self.cType, dstName, dstType), "ii")
+    def transferToTarget(self, dstObj, sttDic):
+        p("CONNECTOR->transferToTarget: Transfer data from %s, type: %s to %s, type: %s " % (self.cName, self.cType, dstObj.cName, dstObj.cType), "ii")
+        pp = False if dstObj.cType in [eDbType.FILE] else True
+        srcVsTar= []
+        fnDic   = {}
 
-        tarL  = []
-        srcL  = []
-        fnDic = {}
-
-        if stt:
-            for cnt, t in enumerate(stt):
-                tarL.append (t)
-                srcCol = stt[t]["s"] if "s" in stt[t] else "''"
-                srcL.append (srcCol)
-                if "f" in stt[t]:
-                    fnc = eval(stt[t]["f"])
+        if sttDic:
+            for cnt, t in enumerate(sttDic):
+                newMap = (sttDic[t]["s"] if "s" in sttDic[t] else "''",t,)
+                srcVsTar.append (newMap)
+                if "f" in sttDic[t]:
+                    fnc = eval(sttDic[t]["f"])
                     fnDic[cnt] = fnc if isinstance(fnc, (list, tuple)) else [fnc]
                 # key is tuple of column: (c1,c2, c3 ...)
                 # values is (location, string function, toEvel (true,false) )
-                elif "c" in stt[t] or "ce" in stt[t]:
-                    colList = stt[t]["c"][0]
-                    colFun  = stt[t]["c"][1]
-                    toEval  = True if "ce" in stt[t] else False
+                elif "c" in sttDic[t] or "ce" in sttDic[t]:
+                    colList = sttDic[t]["c"][0]
+                    colFun  = sttDic[t]["c"][1]
+                    toEval  = True if "ce" in sttDic[t] else False
                     newKey  = []
-                    for j, tc in enumerate(stt):
+                    for j, tc in enumerate(sttDic):
                         if tc in colList:
                             newKey.append ( j )
-                    fnDic[tuple(newKey)] = (cnt, colFun, toEval)
+                    fnDic[ tuple(newKey) ] = (cnt, colFun, toEval)
+        return self.objClass.transferToTarget(dstObj=dstObj, srcVsTar=srcVsTar, fnDic=fnDic, pp=pp)
 
-        return self.objClass.toDB(dstDict=dstDict, tarL=tarL, srcL=srcL, fnDic=fnDic)
+    def loadData(self, srcVsTar, results, numOfRows, cntColumn):
+        return self.objClass.loadData(srcVsTar, results, numOfRows, cntColumn)
 
     def sqlTargetMapping(self):
         p("CONNECTOR->sqlTargetMapping: Update cColumns and cColumnsTDic, type %s, name: %s " % (self.cType,self.cName), "ii")
