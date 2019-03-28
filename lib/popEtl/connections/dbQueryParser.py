@@ -140,6 +140,7 @@ def extract_tables(sql):
     extracted_last_columns_Dic = None
     # replacements to SQL queries
     sql = replaceStr (sString=sql,findStr="ISNULL (", repStr="ISNULL(", ignoreCase=True,addQuotes=None)
+    sql = replaceStr(sString=sql, findStr="CONVERT (",repStr="CONVERT(", ignoreCase=True, addQuotes=None)
     sql = sql.replace("\t"," ")
     statements = list(sqlparse.parse(sql))
 

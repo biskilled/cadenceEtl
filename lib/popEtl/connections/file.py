@@ -180,8 +180,6 @@ class cnFile ():
                 headerList = ["col%s" %i for i in range ( cntColumn ) ]
 
         with codecs.open( filename=self.fullPath, mode='wb', encoding="utf8") as f:
-            #wCsv = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            #wCsv.writerow(headerList)
             if headerList:
                 f.write (u",".join(headerList))
                 f.write("\n")

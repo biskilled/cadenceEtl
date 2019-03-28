@@ -47,7 +47,6 @@ if eDbType.VERTIVA in aConnection :
 if eDbType.ORACLE in aConnection  :
     import cx_Oracle                      # version : 6.1
 
-
 class cnDb (object):
     def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connFilter=None):
         self.cIsSql     = connDic [ eConnValues.connIsSql] if connDic else None
@@ -313,7 +312,7 @@ class cnDb (object):
             columnsInSOurce     = [x[0] for x in self.cursor.description]
             totalColumnInSource = len(columnsInSOurce)
 
-            p ('db->transferToTarget: Loading total columns:%s, object name: %s  ' %(str(totalColumnInSource), str(self.cName)),"ii")
+            p ('db->transferToTarget: Loading total columns:%s, object name: %s  ' %(str(totalColumnInSource), str(dstObj.cName)),"ii")
             self.__parallelProcessing (dstObj=dstObj, srcVsTar=srcVsTar, fnDic=fnDic, pp=pp,  cntColumn=totalColumnInSource)
 
         except Exception as e:
@@ -480,26 +479,29 @@ class cnDb (object):
 
                 if not schemaEqual:
                     srcPost = config.DATA_TYPE['colFrame'][self.cType][1]
-                    if tblName[-1]==srcPost:
-                        tblName=tblName[:-1]
-
                     p("db-> __cloneObject: UPDATE TABLE OLD STRUCTURE : %s " % str(existStrucute))
                     p("db-> __cloneObject: OLD STRUCTURE : %s " %str(existStrucute))
                     p("db-> __cloneObject: NEW STRUCTURE : %s " % str(colList))
 
-                    oldName = tblName+"_"+str (time.strftime('%y%m%d'))
+                    if tblName[-1]=="]":
+                        oldName = "%s_%s]" %(tblName[:-1], str(time.strftime('%y%m%d')))
+                    else:
+                        oldName = "%s_%s" %(tblName, str (time.strftime('%y%m%d')))
+
                     if (self.__objectExists(objName=oldName)):
-                        num = 1
-                        if oldName[-1]=="]":
-                            oldName = oldName[:-1] + "_" + str(num)+"]"
-                        else:
-                            oldName=oldName+"_"+str (num)
+                        num = 0
                         while (self.__objectExists(objName=oldName)):
                             num += 1
+                            if tblName[-1] == "]":
+                                oldName = "%s_%s_%s]" % (tblName[:-1], str(time.strftime('%y%m%d')), str(num))
+                            else:
+                                oldName = "%s_%s_%s" % (tblName, str(time.strftime('%y%m%d')), str(num))
                             oldName = oldName[: oldName.rfind('_')] + "_" + str(num)
                     if oldName:
                         p ("db-> __cloneObject: Table History is ON and changed, table %s exists ... will rename to %s" %(str (tblName) , str(oldName) ), "ii")
                         oldName = oldName[oldName.find('.')+1:]
+                        oldName = self.__wrapSql(col=oldName, remove=True)
+                        tblName = self.__wrapSql(col=tblName, remove=True)
                         sql = getattr (queries, self.cType+"_renameTable")(tblName,oldName)
 
                         #sql = eval (self.objType+"_renameTable ("+self.objName+","+oldName+")")
