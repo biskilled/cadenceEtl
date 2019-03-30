@@ -6,7 +6,9 @@ popEye Documentation
 About popEye
 `````````````
 
-popEye is an IT integration tool.  It can mapp diverse SQL DBs and No SQL DB, extract data from one source to another and maintain business logic in and easy SQL/python format.
+popEye is an IT integration tool which was build to enable fast and fun design, implement and maiantane any data project.
+To do that we developed integration and modeling blockes that enable to model diverse SQL DBs
+and No SQL DB, extract data from one source to another and maintain business logic in and easy SQL/python format.
 
 popEye's main goals are creating fast integration cycles and enabling to implement new requirement in a fast manner. It also provide a platform that enable to test and update business logic using the best of SQL in one hand and python on the other.
 
@@ -20,6 +22,12 @@ We believe that integration can be fast and much more simple buy using simple sc
 This documentation is the first version of popEye, we do look for your help and we will provide our "wish-list" .
 
 PopEye hope to extend and be one of the major open-source integration platform. come and join us
+
+Lets satrt with a small sample:
+- load data from oracle table to sql-server :
+
+- load data from a query into sql-server:
+
 
 ..  toctree::
     :maxdepth: 2
