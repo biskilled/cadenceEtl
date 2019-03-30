@@ -54,32 +54,34 @@ class connector ():
         return self.objClass.setColumns(sttDic)
 
     def create (self, stt=None, seq=None,tblName=None):
-        if seq:
-            p ("CONNECTOR->create: create type:%s, name: %s WITH SEQUENCE: %s" % (self.cType , self.cName, str (seq)) , "ii")
-        elif tblName:
-            p("CONNECTOR->create: create new table type:%s, name: %s " % (self.cType, tblName), "ii")
-        else:
-            p ("CONNECTOR->create: create type:%s, name: %s " % (self.cType , self.cName) , "ii")
+        if self.objClass:
+            objName = "query" if self.objClass.cIsSql else self.cName
+            if seq:
+                p ("CONNECTOR->create: create type:%s, name: %s WITH SEQUENCE: %s" % (self.cType , objName, str (seq)) , "ii")
+            elif tblName:
+                p("CONNECTOR->create: create new table type:%s, name: %s " % (self.cType, tblName), "ii")
+            else:
+                p ("CONNECTOR->create: create type:%s, name: %s " % (self.cType , objName) , "ii")
         self.objClass.create(stt=stt, seq=seq, tblName=tblName)
 
     def getColumns(self):
-        p("CONNECTOR->getColumns: Get column strucure schema type:%s, name: %s " % (self.cType, self.cName), "ii")
+        #p("CONNECTOR->getColumns: Get column strucure schema type:%s, name: %s " % (self.cType, self.cName), "ii")
         return self.objClass.getColumns()
 
     def structure (self,stt ,addSourceColumn=False,tableName=None, sqlQuery=None):
-        p ("CONNECTOR->structure: Get current schema type:%s, name: %s " %(self.cType, self.cName) ,"ii")
+        #p ("CONNECTOR->structure: Get current schema type:%s, name: %s " %(self.cType, self.cName) ,"ii")
         return self.objClass.structure(stt, addSourceColumn=addSourceColumn,tableName=tableName, sqlQuery=sqlQuery)
 
     def truncate (self):
-        p ("CONNECTOR->truncate: Truncating schema type:%s, name: %s " %(self.cType, self.cName) ,"ii")
+        #p ("CONNECTOR->truncate: Truncating schema type:%s, name: %s " %(self.cType, self.cName) ,"ii")
         return self.objClass.truncate()
 
     def execSP (self, sqlQuery):
-        p ("CONNECTOR->execSP: schema:%s, name: %s, executing query %s " %(self.cType, self.cName,sqlQuery) ,"ii")
+        #p ("CONNECTOR->execSP: schema:%s, name: %s, executing query %s " %(self.cType, self.cName,sqlQuery) ,"ii")
         return self.objClass.execSP (sqlQuery)
 
     def transferToTarget(self, dstObj, sttDic):
-        p("CONNECTOR->transferToTarget: Transfer data from %s, type: %s to %s, type: %s " % (self.cName, self.cType, dstObj.cName, dstObj.cType), "ii")
+        #p("CONNECTOR->transferToTarget: Transfer data from %s, type: %s to %s, type: %s " % (self.cName, self.cType, dstObj.cName, dstObj.cType), "ii")
         pp = False if dstObj.cType in [eDbType.FILE] else True
         srcVsTar= []
         fnDic   = {}
@@ -108,34 +110,34 @@ class connector ():
         return self.objClass.loadData(srcVsTar, results, numOfRows, cntColumn)
 
     def sqlTargetMapping(self):
-        p("CONNECTOR->sqlTargetMapping: Update cColumns and cColumnsTDic, type %s, name: %s " % (self.cType,self.cName), "ii")
+        #p("CONNECTOR->sqlTargetMapping: Update cColumns and cColumnsTDic, type %s, name: %s " % (self.cType,self.cName), "ii")
         return self.objClass.sqlTargetMapping()
 
     def allStrucure(self, filterDic=None, withType=False):
-        p("CONNECTOR->allStrucure: Reciave all DB object, type %s, name: %s, filter %s, withType: %s  " % (self.cType, self.cName, str(filterDic), str(withType)), "ii")
+        #p("CONNECTOR->allStrucure: Reciave all DB object, type %s, name: %s, filter %s, withType: %s  " % (self.cType, self.cName, str(filterDic), str(withType)), "ii")
         return self.objClass.allStrucure(filterDic, withType)
 
 
     def dfFromTable (self, columns=None, index_col=None):
-        p("CONNECTOR->dfFromTable: Load into dataframe all data type:%s, name: %s " % (self.cType, self.cName), "ii")
+        #p("CONNECTOR->dfFromTable: Load into dataframe all data type:%s, name: %s " % (self.cType, self.cName), "ii")
         return self.objClass.dfFromTable (columns, index_col)
 
     def dfFromQuery (self, sql, index_col=None):
-        p("CONNECTOR->dfFromQuery: SQL Query Load into dataframe all data type:%s, name: %s , query: %s" % (self.cType, self.cName, str(sql)), "ii")
+        #p("CONNECTOR->dfFromQuery: SQL Query Load into dataframe all data type:%s, name: %s , query: %s" % (self.cType, self.cName, str(sql)), "ii")
         return self.objClass.dfFromQuery (sql, index_col)
 
     def minValues (self, colToFilter=None, resolution=None, periods=None, startDate=None):
-        p("CONNECTOR->minValues: Return MINIMUM values of field %s data type:%s, name: %s " % (colToFilter, self.cType, self.cName), "ii")
+        #p("CONNECTOR->minValues: Return MINIMUM values of field %s data type:%s, name: %s " % (colToFilter, self.cType, self.cName), "ii")
         return self.objClass.minValues (colToFilter=colToFilter, resolution=resolution, periods=periods, startDate=startDate)
 
     def merge (self, mergeTable, mergeKeys=None):
-        p("CONNECTOR->merge: type: %s, merge source %s with destination %s, keys: %s " % (self.cType, self.cName, str(mergeTable), str (mergeKeys)), "ii")
+        #p("CONNECTOR->merge: type: %s, merge source %s with destination %s, keys: %s " % (self.cType, self.cName, str(mergeTable), str (mergeKeys)), "ii")
         return self.objClass.merge (mergeTable=mergeTable, mergeKeys=mergeKeys)
 
     def close (self):
-        p ("CONNECTOR->close: CLOSING CONNECTION type:%s, name: %s " %(self.cType, self.cName) ,"ii")
+        #p ("CONNECTOR->close: CLOSING CONNECTION type:%s, name: %s " %(self.cType, self.cName) ,"ii")
         self.objClass.close()
 
     def cntRows (self):
-        p ("CONNECTOR->cntRows: Count rows type:%s, name: %s " %(self.cType, self.cName) ,"ii")
+        #p ("CONNECTOR->cntRows: Count rows type:%s, name: %s " %(self.cType, self.cName) ,"ii")
         return self.objClass.cntRows()

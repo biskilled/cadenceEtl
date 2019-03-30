@@ -76,7 +76,8 @@ class cnDb (object):
             p("Connection URL is not exists, use valid URL conn" )
             return
 
-        p("db->init: DB type: %s, table: %s, url: %s" % (self.cType, self.cName, str(self.cUrl)), "ii")
+        objName = "query" if self.cIsSql else self.cName
+        p("db->init: DB type: %s, table: %s" % (self.cType, objName, ), "ii")
 
         if eDbType.MYSQL == self.cType:
             self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
@@ -342,7 +343,7 @@ class cnDb (object):
 
             newCol = newCol[:-1]
             srcSql = preSrcSql + newCol + postSrcSql
-            p("db->__dbMapSrcVsTarget: there is mapping, update to new sql query: %s " % (srcSql), "ii")
+            #p("db->__dbMapSrcVsTarget: there is mapping, update to new sql query: %s " % (srcSql), "ii")
         return srcSql
 
     def __parallelProcessing (self, dstObj, srcVsTar, fnDic, pp, cntColumn=None):
