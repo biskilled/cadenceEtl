@@ -218,6 +218,7 @@ def setDicConnValue (connJsonVal=None, connType=None, connName=None,
                 p(err, "e")
                 raise Exception(err)
 
+
         retVal[eConnValues.connType] = isDbType( retVal[eConnValues.connType] )
 
         if  retVal[eConnValues.connName] is not None and \
