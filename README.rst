@@ -1,4 +1,4 @@
-|PyPI version| |Docs badge| |Chat badge| |Build Status| |Code Of Conduct| |Mailing Lists| |License|
+|PyPI version| |Docs badge| |Build Status| |License|
 
 **********
 popEye-Etl
