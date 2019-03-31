@@ -53,7 +53,7 @@ GNU General Public License v3.0
 
 See `COPYING <COPYING>`_ to see the full text.
 
-.. |PyPI version| image:: https://img.shields.io/pypi/v/ansible.svg
+.. |PyPI version| image:: https://img.shields.io/pypi/v/popEtl.svg
    :target: https://github.com/biskilled/popEtl
 .. |Docs badge| image:: https://img.shields.io/badge/docs-latest-brightgreen.svg
    :target: https://readthedocs.org/projects/popeye-etl/
