@@ -156,8 +156,6 @@ def _execSql (connDict):
         connObj.close()
         return
 
-
-
 def _updateSourceTargetCompareLog (js):
     isRepoTblsExists  = False
     connUrl     = None
