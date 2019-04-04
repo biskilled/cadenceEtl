@@ -279,3 +279,35 @@ def filterFiles (modelToExec, dirData=None, includeFiles=None, notIncludeFiles=N
                 p('%s: INCLUDE: Folder: %s, file: %s not exists.. Ignoring >>>>' % (modelToExec, str(config.DIR_DATA), f), "ii")
 
     return jsonFiles
+
+class validation ():
+    @property
+    def CON_DIR_DATA(self):
+        return config.DIR_DATA
+
+    @CON_DIR_DATA.setter
+    def CON_DIR_DATA(self, val):
+        if not os.path.isdir(val):
+            err = "%s is not a folder !" %(str(val))
+            raise ValueError(err)
+        config.DIR_DATA=val
+
+    @property
+    def CONNECTION_URL(self):
+        return config.CONN_URL
+
+    @CONNECTION_URL.setter
+    def CONNECTION_URL(self,val):
+        if isinstance(val, dict):
+            for v in val:
+                dbType = isDbType(v)
+                if not dbType:
+                    if isinstance(val[v], dict) and eConnValues.connType in val[v] and isDbType( val[v][eConnValues.connType] ) is not None:
+                        pass
+                    else:
+                        err = "%s:, %s is not legal Conn type !" %(str(v),str(val[v]))
+                        raise ValueError(err)
+            for v in val:
+                config.CONN_URL[v] = val[v]
+        else:
+            raise ValueError("Value must be dicionary !")

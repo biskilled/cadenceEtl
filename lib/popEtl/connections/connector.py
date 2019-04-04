@@ -48,6 +48,7 @@ class connector ():
             p ("CONNECTOR->init: %s is Not valid connection .... quiting ...." %(str(connDic)) ,"e")
             return
 
+
     # GENERAL
     def setColumns(self, sttDic):
         p ("CONNECTOR->setColumns: setColumn type:%s, name: %s " %(self.cType, self.cName), "ii")

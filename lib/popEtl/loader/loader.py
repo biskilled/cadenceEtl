@@ -32,48 +32,6 @@ from popEtl.connections.dbSqlLite   import sqlLite
 from popEtl.connections.connector   import connector
 from popEtl.glob.globalDBFunctions  import logsToDb
 
-##############   Not in used - need to check            #####################################
-# Saving into file new sequence
-def addIncSaveToFile (df, columnInc, srcObj):
-    if df is not None and columnInc in df.columns:
-        maxValue = df[columnInc].max()
-        if str(maxValue).lower() == 'nan':
-            p("loader->addSeqSaveToFile: df is empty - there are no rows to add into column %s " % (str(columnInc)), "ii")
-            return
-        else:
-            db = sqlLite(os.path.join(config.DIR_DATA, config.SEQ_DB_FILE_NAME))
-            db.execReplaceSql(srcObj.objName, columnInc, maxValue)
-            db.close()
-    else:
-        p ("loader->addSeqSaveToFile: df is not exists or column %s is not in dataframe" %(str(columnInc)) , "ii")
-
-def addIncemenral (inc, isSQL, srcObj, srcMapping=None):
-    if not inc:
-        return isSQL, None, None
-
-    columnSeq = inc['column']
-    columnStart = inc['start'] if 'start' in inc else 0
-    db = sqlLite ( os.path.join(config.DIR_DATA, config.SEQ_DB_FILE_NAME) )
-    curSeq = db.execSqlGetValue (srcObj.cName , columnSeq)
-    if curSeq:
-        columnStart = curSeq
-    db.close()
-
-
-    if isSQL:
-        isSQL = isSQL.replace (config.QUERY_SEQ_TAG_VALUE, str (columnStart)).replace (config.QUERY_SEQ_TAG_FIELD, str (columnSeq))
-    else:
-        tblName    = srcObj.objName
-        if srcMapping:
-            isSQL = "Select "+",".join (srcMapping)+" From "+tblName+" Where "+str(columnSeq)+" > "+str(columnStart)
-        else:
-            isSQL = "Select " + "*" + " From " + tblName + " Where " + str(columnSeq) + " > " + str(columnStart)
-
-    p("loader->addSeq: Sequence is ON, field %s, start from %s, file is update, sql: %s" % (str(columnSeq),str(columnStart),str(isSQL)), "ii")
-    return isSQL, columnSeq, columnStart
-##############   Not in used - need to check            #####################################
-
-
 # Will merge table with connection in source object
 def _execMerge (dstDict, mergeConn, sttDic, toCreate=True):
 
@@ -440,3 +398,46 @@ def trasnfer (dicObj=None, sourceList=None, destList=None):
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
+
+
+
+##############   Not in used - need to check            #####################################
+# Saving into file new sequence
+def addIncSaveToFile (df, columnInc, srcObj):
+    if df is not None and columnInc in df.columns:
+        maxValue = df[columnInc].max()
+        if str(maxValue).lower() == 'nan':
+            p("loader->addSeqSaveToFile: df is empty - there are no rows to add into column %s " % (str(columnInc)), "ii")
+            return
+        else:
+            db = sqlLite(os.path.join(config.DIR_DATA, config.SEQ_DB_FILE_NAME))
+            db.execReplaceSql(srcObj.objName, columnInc, maxValue)
+            db.close()
+    else:
+        p ("loader->addSeqSaveToFile: df is not exists or column %s is not in dataframe" %(str(columnInc)) , "ii")
+
+def addIncemenral (inc, isSQL, srcObj, srcMapping=None):
+    if not inc:
+        return isSQL, None, None
+
+    columnSeq = inc['column']
+    columnStart = inc['start'] if 'start' in inc else 0
+    db = sqlLite ( os.path.join(config.DIR_DATA, config.SEQ_DB_FILE_NAME) )
+    curSeq = db.execSqlGetValue (srcObj.cName , columnSeq)
+    if curSeq:
+        columnStart = curSeq
+    db.close()
+
+
+    if isSQL:
+        isSQL = isSQL.replace (config.QUERY_SEQ_TAG_VALUE, str (columnStart)).replace (config.QUERY_SEQ_TAG_FIELD, str (columnSeq))
+    else:
+        tblName    = srcObj.objName
+        if srcMapping:
+            isSQL = "Select "+",".join (srcMapping)+" From "+tblName+" Where "+str(columnSeq)+" > "+str(columnStart)
+        else:
+            isSQL = "Select " + "*" + " From " + tblName + " Where " + str(columnSeq) + " > " + str(columnStart)
+
+    p("loader->addSeq: Sequence is ON, field %s, start from %s, file is update, sql: %s" % (str(columnSeq),str(columnStart),str(isSQL)), "ii")
+    return isSQL, columnSeq, columnStart
+##############   Not in used - need to check            #####################################

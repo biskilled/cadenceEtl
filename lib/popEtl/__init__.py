@@ -15,5 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
-from popEtl.loader.loader import trasnfer
-from popEtl.mapp.mapper import model
+from popEtl.loader.loader import trasnfer as Transfer
+from popEtl.mapp.mapper import model as Model
+from popEtl.loader.loadExecSP import execQuery as ExecQuery
+from popEtl.connections.connector import connector as Connector
+from popEtl.glob.glob import validation as __validation
+
+CONFIG = __validation()
+
+
