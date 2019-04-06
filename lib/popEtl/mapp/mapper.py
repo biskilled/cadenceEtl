@@ -25,7 +25,7 @@ import io
 from collections            import OrderedDict
 
 from popEtl.config          import config
-from popEtl.glob.glob       import p, setDicConnValue, getDicKey, filterFiles
+from popEtl.glob.glob       import p, getDicKey, filterFiles
 from popEtl.glob.enums      import eConnValues, ePopEtlProp
 from popEtl.glob.globalDBFunctions import checkSequence, logsToDb
 from popEtl.connections.connector  import connector
@@ -123,6 +123,7 @@ def mapper (dicProp):
 
     # There is direct source
     if isSource:
+        isSource.connect()
         stt         = isSource.structure(stt=stt,addSourceColumn=addSourceColumn)
         srcColumns  = isSource.getColumns()
 
@@ -152,10 +153,17 @@ def mapper (dicProp):
                 # Update stt with new types
                 stt = sourceToTargetDataTypes(isSource.cType, isTarget.cType, stt)
 
+            isTarget.connect()
             isTarget.create(stt=stt, seq=seq)
-            if isMerge: isMerge.create(stt=stt, seq=seq)
+            isTarget.close()
+            if isMerge:
+                isMerge.connect()
+                isMerge.create(stt=stt, seq=seq)
+                isMerge.close()
+
         else:
             p ("mapper->mapper: Source %s is not exists, will not create target table >>>>>>>>>>" %str(isSource.cName),"e")
+        isSource.close()
     # there is only target
     elif stt:
         for t in stt:
@@ -164,10 +172,16 @@ def mapper (dicProp):
                 del stt[t]
             if "s" not in stt[t]:
                 stt[t]["s"]=t
+        isTarget.connect()
         isTarget.create(stt=stt, seq=seq)
+        isTarget.close()
     elif isMerge:
+        isTarget.connect()
+        isMerge.connect()
         stt = isTarget.structure(stt=stt, addSourceColumn=addSourceColumn)
         isMerge.create (stt=stt,seq=seq)
+        isTarget.close()
+        isMerge.close()
 
 def _extractNodes (jText,jFileName,sourceList=None, destList=None):
     sttDic = OrderedDict()
@@ -195,21 +209,16 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
         targetColumn    = getDicKey(ePopEtlProp.col,keys)
 
         if sourceConn:
-            connDic = setDicConnValue (connJsonVal=jMap[sourceConn],extraConnVal=jFileName, isSource=True )
-            srcObj  = connDic [ eConnValues.connObj ] if connDic else None
-            dicProp[ePopEtlProp.src] = connector(connDic = connDic)
+            dicProp[ePopEtlProp.src] = connector(connJsonVal=jMap[sourceConn],extraConnVal=jFileName, isSource=True)
 
         if queryConn:
-            connDic = setDicConnValue(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
-            dicProp[ePopEtlProp.src] = connector(connDic = connDic)
+            dicProp[ePopEtlProp.src] = connector(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
             if sourceConn:
                 p("mappr->_extractNodes: There is query and source, will be QUERY sed as SOURCE object >>>>>> ", "ii")
 
         # target -> Connection object
         if targetConn:
-            connDic = setDicConnValue(connJsonVal=jMap[targetConn], connObj=tarObj, extraConnVal=jFileName,  isTarget=True)
-            tarObj = connDic[eConnValues.connObj] if connDic else None
-            dicProp[ePopEtlProp.tar] = connector(connDic = connDic)
+            dicProp[ePopEtlProp.tar] = connector(connJsonVal=jMap[targetConn], connObj=tarObj, extraConnVal=jFileName,  isTarget=True)
 
         # create table with sequence as fisrt column -> apply on target only ! (if there is merge - will use merge option, without adding identity
         if seqFiles:
@@ -261,7 +270,7 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None):
                 for t in sttDicTemp:
                     if t not in sttDic: sttDic[t] = sttDicTemp[t]
                 dicProp[ePopEtlProp.stt] = sttDic
-                dicProp[ePopEtlProp.tar].setColumns(sttDic)
+                dicProp[ePopEtlProp.tar].setColumnsTypes(sttDic)
             else:
                 p("mappr->loadJson: Target columns exists, but there is no target connection ... nothing to do ...","e")
 

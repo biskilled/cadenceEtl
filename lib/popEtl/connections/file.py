@@ -70,7 +70,7 @@ class cnFile ():
         else:
             p("file->truncate: %s is not exists " % (self.fullPath))
 
-    def getColumns (self):
+    def getColumnsTypes (self):
         if self.cColumns and len(self.cColumns)>0:
             return self.cColumns
         else:

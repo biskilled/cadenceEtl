@@ -48,26 +48,28 @@ if eDbType.ORACLE in aConnection  :
     import cx_Oracle                      # version : 6.1
 
 class cnDb (object):
-    def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connFilter=None):
-        self.cIsSql     = connDic [ eConnValues.connIsSql] if connDic else None
-        self.cName      = setQueryWithParams ( connDic [ eConnValues.connObj] ) if connDic else connName
+    def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connObj=None, connFilter=None):
+        self.cIsSql = connDic [ eConnValues.connIsSql]  if connDic else None
+        self.cType  = connDic[eConnValues.connType]     if connDic else connType
+        self.cName  = connDic [ eConnValues.connName]   if connDic else connName if connName else connType
+        self.cUrl   = connDic[eConnValues.connUrl]      if connDic else connUrl
+        self.cWhere = connDic[eConnValues.connFilter]   if connDic else connFilter
+        self.cObj   = setQueryWithParams(connDic[eConnValues.connObj]) if connDic else connObj
+
         self.cSchema    = None
-        self.cType      = connDic [ eConnValues.connType] if connDic else connType
-
-        if self.cIsSql:
-            self.cSQL = self.cName
-        elif self.cName:
-            tblName = self.__wrapSql(col=self.cName, remove=False)
-            self.cSQL = "SELECT * FROM "+tblName
-
-        self.cColumns   = []
+        self.conn       = None
+        self.cursor     = None
         # Will be update if there is a query as source and mapping in query as well (select x as yy.....
         self.cColumnsTDic= None
-        self.cUrl       = connDic [ eConnValues.connUrl ] if connDic else connUrl
-        self.cWhere     = connDic [ eConnValues.connFilter ] if connDic else connFilter
-        self.cColoumnAs = True
+        self.cColoumnAs  = True
+        self.insertSql   = None
+        self.cColumns    = []
 
-        self.insertSql  = None
+        if self.cIsSql:
+            self.cSQL = self.cObj
+        elif self.cObj:
+            tblName = self.__wrapSql(col=self.cObj, remove=False)
+            self.cSQL = "SELECT * FROM "+tblName
 
         if not self.cType or not isDbType(self.cType):
             p ("Connection type is not valid: %s, use connection from config file" %(str(self.cType)) )
@@ -76,9 +78,21 @@ class cnDb (object):
             p("Connection URL is not exists, use valid URL conn" )
             return
 
-        objName = "query" if self.cIsSql else self.cName
+        if not self.cIsSql and self.cObj:
+            self.cObj = self.__wrapSql(col=self.cObj, remove=True)
+            self.cObj = self.cObj.split(".")
+            self.cSchema =self.cObj[0] if len(self.cObj) > 1 else config.DATA_TYPE['schema'][self.cType]
+            self.cObj  =  self.cObj[1] if len(self.cObj) > 1 else self.cObj[0]
+
+            if self.cWhere and len (self.cWhere)>1:
+                self.cWhere = re.sub (r'WHERE', '', self.cWhere, flags=re.IGNORECASE)
+                self.cWhere = setQueryWithParams (self.cWhere)
+                self.cSQL = self.cSQL + " WHERE " + self.cWhere
+
+        objName = "query" if self.cIsSql else self.cObj
         p("db->init: DB type: %s, table: %s" % (self.cType, objName, ), "ii")
 
+    def connect (self):
         if eDbType.MYSQL == self.cType:
             self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
             self.cursor = self.conn.cursor()
@@ -98,18 +112,6 @@ class cnDb (object):
             self.conn = odbc.connect (self.cUrl) #ansi=True
             self.cursor = self.conn.cursor()
 
-        if not self.cIsSql and self.cName:
-            self.cName = self.__wrapSql(col=self.cName, remove=True)
-            self.cName = self.cName.split(".")
-
-            self.cSchema =self.cName[0] if len(self.cName) > 1 else config.DATA_TYPE['schema'][self.cType]
-            self.cName =  self.cName[1] if len(self.cName) > 1 else self.cName[0]
-
-            if self.cWhere and len (self.cWhere)>1:
-                self.cWhere = re.sub (r'WHERE', '', self.cWhere, flags=re.IGNORECASE)
-                self.cWhere = setQueryWithParams (self.cWhere)
-                self.cSQL = self.cSQL + " WHERE " + self.cWhere
-
     def close(self):
         try:
             if self.cursor: self.cursor.close()
@@ -119,37 +121,9 @@ class cnDb (object):
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             p("sb->close: Exception :"+str(exc_type)+" file name:"+str(fname)+" line: "+str(exc_tb.tb_lineno)+" massage: "+str(exc_obj.message), "e")
 
-    def setColumns(self, sttDic):
-        ret = OrderedDict ()
-        columnsList = [(i, sttDic[i]["t"]) for i in sttDic if "t" in sttDic[i]]
-
-        dType = config.DATA_TYPE.keys()
-
-        for tup in columnsList:
-            fName = tup[0]
-            fType = tup[1]
-
-            fmatch = re.search ("\(.+\)",fType)
-
-            if fmatch:
-                fType = re.sub ("\(.+\)","",fType)
-
-            if fType in dType:
-                rType= config.DATA_TYPE[fType][self.cType]
-                if (isinstance(rType, tuple )):
-                    rType = rType[0]
-            else:
-                rType= config.DATA_TYPE['default'][self.cType]
-                fmatch = None
-            fullRType = str(rType)+""+str(fmatch.group()) if fmatch else rType
-
-            self.cColumns.append ( (fName , fullRType.lower()) )
-        p("db->setColumns: type: %s, table %s will be set with column: %s" %(self.cType,self.cName, str(self.cColumns) ), "ii")
-        return
-
     def create(self, stt=None,  seq=None, tblName=None):
-        tblName = tblName if tblName else "[" + self.cSchema + "].[" + self.cName+"]" if self.cSchema else "["+self.cName+"]"
-        colList = [(t,stt[t]["t"]) for t in stt if "t" in stt[t]] if stt else self.getColumns()
+        tblName = tblName if tblName else "[" + self.cSchema + "].[" + self.cObj+"]" if self.cSchema else "["+self.cObj+"]"
+        colList = [(t,stt[t]["t"]) for t in stt if "t" in stt[t]] if stt else self.getColumnsTypes()
 
         if colList and len (colList)>0:
             boolToCreate = self.__cloneObject(colList, tblName)
@@ -172,16 +146,16 @@ class cnDb (object):
                 p ("Create table \n"+sql)
                 self.__executeSQL (sql)
         else:
-            p("db->create: Table %s cannot create - problem with mappong source columns, src column: %s " %( str(self.cName), str(colList) ), "e")
+            p("db->create: Table %s cannot create - problem with mappong source columns, src column: %s " %( str(self.cObj), str(colList) ), "e")
 
     def truncate(self, tbl=None):
-        tbl = tbl if tbl else self.cName
+        tbl = tbl if tbl else self.cObj
         sql = getattr(queries, self.cType + "_truncate")(tbl)
 
         self.__executeSQL(sql)
-        p("db->truncate: truncate table DB type: %s, table: %s, url: %s" % (self.cType, self.cName, str(self.cUrl)),"ii")
+        p("db->truncate: truncate table DB type: %s, table: %s, url: %s" % (self.cType, self.cObj, str(self.cUrl)),"ii")
 
-    def getColumns (self):
+    def getColumnsTypes (self):
         if self.cColumns and len(self.cColumns)>0:
             return self.cColumns
         else:
@@ -212,7 +186,7 @@ class cnDb (object):
                             sttSource[stt[t]["s"]] = tmpList
 
 
-            tableName = tableName if tableName else self.cName
+            tableName = tableName if tableName else self.cObj
             if self.cType in ('access'):
                 rows = self.__access (tableName)
             else:
@@ -225,7 +199,7 @@ class cnDb (object):
                 if addSourceColumn or stt is None:
                     tableStructure.append( ( cName,cType ) )
                 else:
-                    if unicode(cName) in sttSource:
+                    if  decodeStrPython2Or3 (sObj=cName, un=True) in sttSource:
                         tableStructure.append((cName, cType))
                 if cName in sttSource:
                     targetKey  = sttSource[cName]
@@ -257,11 +231,11 @@ class cnDb (object):
 
     def loadData(self, srcVsTar, results, numOfRows, cntColumn):
         if self.cIsSql:
-            p("db->loadData: Object is query... connot load data, %s " %(self.cName))
+            p("db->loadData: Object is query... connot load data, %s " %(self.cObj))
             return
 
         if results and numOfRows>0:
-            tarSQL = "INSERT INTO " + self.cName + " "
+            tarSQL = "INSERT INTO " + self.cObj + " "
             if srcVsTar and len(srcVsTar)>0:
                 tarL = [self.__wrapSql(col=t[1], remove=False, cType=self.cType) for t in srcVsTar]
                 tarSQL += "(" + ','.join(tarL) + ") "
@@ -273,9 +247,9 @@ class cnDb (object):
             try:
                 self.cursor.executemany(tarSQL, results)
                 self.conn.commit()
-                p('db->loadData: Load %s into target: %s >>>>>> ' % (str(numOfRows), self.cName), "ii")
+                p('db->loadData: Load %s into target: %s >>>>>> ' % (str(numOfRows), self.cObj), "ii")
             except Exception as e:
-                p("db->loadData: type: %s, name: %s ERROR in cursor.executemany !!!!" % (self.cType, str(self.cName)), "e")
+                p("db->loadData: type: %s, name: %s ERROR in cursor.executemany !!!!" % (self.cType, str(self.cObj)), "e")
                 p("db->loadData: ERROR, target query: %s " % str(tarSQL), "e")
                 p("db->loadData: ERROR, sample result: %s " % str(results[0]), "e")
                 p(e, "e")
@@ -313,7 +287,7 @@ class cnDb (object):
             columnsInSOurce     = [x[0] for x in self.cursor.description]
             totalColumnInSource = len(columnsInSOurce)
 
-            p ('db->transferToTarget: Loading total columns:%s, object name: %s  ' %(str(totalColumnInSource), str(dstObj.cName)),"ii")
+            p ('db->transferToTarget: Loading total columns:%s, object name: %s  ' %(str(totalColumnInSource), str(dstObj.cObj)),"ii")
             self.__parallelProcessing (dstObj=dstObj, srcVsTar=srcVsTar, fnDic=fnDic, pp=pp,  cntColumn=totalColumnInSource)
 
         except Exception as e:
@@ -360,7 +334,7 @@ class cnDb (object):
                     results = self.cursor.fetchall()
                 results = self.__functionResultMapping( results, fnDic)
             except Exception as e:
-                p("db->__parallelProcessing: type: %s, name: %s ERROR in cursor.fetchmany" %(self.cType, str(self.cName)), "e")
+                p("db->__parallelProcessing: type: %s, name: %s ERROR in cursor.fetchmany" %(self.cType, str(self.cObj)), "e")
                 p(str(e), "e")
                 break
             if not results or len(results)<1:
@@ -401,14 +375,14 @@ class cnDb (object):
                         fnStr = fnList[1]
                         fnEval = fnList[2]
                         newVal = [str(r[cr]).decode(config.FILE_DECODING) for cr in pos]
-                        newValStr = unicode(fnStr).format(*newVal)
+                        newValStr = decodeStrPython2Or3 (sObj=fnStr, un=True).format(*newVal)
                         r[fnPos] = eval(newValStr) if fnEval else newValStr
                 results[cntRows] = r
         return results
 
     def minValues (self, colToFilter, resolution=None, periods=None, startDate=None):
         # there is min value to
-        sql = getattr(queries, self.cType + "_minValue")(self.cName, self.cSchema, resolution, periods, colToFilter, startDate)
+        sql = getattr(queries, self.cType + "_minValue")(self.cObj, self.cSchema, resolution, periods, colToFilter, startDate)
         p ("db->minValues: exec query : %s" %(sql), "ii")
         self.__executeSQL(sql)
         minValue = self.cursor.fetchone()
@@ -420,7 +394,8 @@ class cnDb (object):
         p("db->minValues: get minimum value for table %s, field %s, sql : %s" %(str( self.cType), str(colToFilter), str(sql)), "ii" )
         return minValue
 
-    def execSP (self, sqlQuery ):
+    def execSP (self, sqlQuery=None ):
+        sqlQuery = self.cSQL if not sqlQuery and self.cIsSql else sqlQuery
         self.__executeSQL( sqlQuery )
 
     def merge (self, mergeTable, mergeKeys, sourceTable=None ):
@@ -429,9 +404,9 @@ class cnDb (object):
     def cntRows (self):
         sql = ""
         if self.cIsSql:
-            sql = "SELECT COUNT (*) FROM ("+self.cName+")"
+            sql = "SELECT COUNT (*) FROM ("+self.cObj+")"
         else:
-            tblName = self.cName.split(".")
+            tblName = self.cObj.split(".")
             tblName = tblName[0] if len(tblName)==1 else tblName[1]
             sql = "SELECT COUNT (*) FROM ["+tblName+"]"
         self.__executeSQL(sql, commit=False)
@@ -445,7 +420,7 @@ class cnDb (object):
 
     def getExistColumns (self, tblName=None):
         existStrucute = []
-        tblName = tblName if tblName else self.cName
+        tblName = tblName if tblName else self.cObj
         tblName = self.__wrapSql(col=tblName, remove=True)
         objectExists = self.__objectExists(objName=tblName)
         if (objectExists):
@@ -463,11 +438,11 @@ class cnDb (object):
         return existStrucute
 
     def __chunker(self, seq, size):
-        return (seq[pos:pos + size] for pos in xrange(0, len(seq), size))
+        return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
     def __cloneObject(self, colList, tblName=None):
         colList = [(str(self.__wrapSql(col=tup[0], remove=False) ),tup[1].lower().replace (" ","")) for tup in colList]
-        tblName = tblName if tblName else  self.cName
+        tblName = tblName if tblName else  self.cObj
         existStrucute = self.getExistColumns(tblName=tblName)
 
         if config.TABLE_HISTORY:
@@ -522,7 +497,7 @@ class cnDb (object):
         return True
 
     def __objectExists (self, objName=None):
-        objName = self.cName if not objName else objName
+        objName = self.cObj if not objName else objName
         sql = "Select OBJECT_ID('"+objName+"')"
         self.cursor.execute(sql)
         row = self.cursor.fetchone()
@@ -537,7 +512,7 @@ class cnDb (object):
             sql = [sql]
         try:
             for s in sql:
-                s = unicode(s)
+                s = decodeStrPython2Or3 (sObj=s, un=True)
                 self.cursor.execute(s)  # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(s)
             if commit:
                 self.conn.commit()          # if 'ceodbc' in odbc.__name__.lower() else self.cursor.commit()
@@ -559,11 +534,11 @@ class cnDb (object):
             p('db-> __schemaCompare: table exists with same strucure as column list ... ', "ii")
 
             tableStructure = self.structure()
-            p('db-> __schemaCompare: table %s, old structure: %s, new: %s' %( str(self.cName), str(tableStructure), str(self.cColumns)), "ii")
+            p('db-> __schemaCompare: table %s, old structure: %s, new: %s' %( str(self.cObj), str(tableStructure), str(self.cColumns)), "ii")
             if set (self.cColumns) == set (tableStructure):
                 p('db-> __schemaCompare: table %s has no change >>>' %(self.cType), "ii")
                 return True
-        p ('db-> __schemaCompare: table %s structure changed, old: %s, new: %s >>>>' %(self.cName, str(self.cColumns), str(colList) ), "ii")
+        p ('db-> __schemaCompare: table %s structure changed, old: %s, new: %s >>>>' %(self.cObj, str(self.cColumns), str(colList) ), "ii")
         return False
 
     def __sqlMerge(self, mergeTable, mergeKeys,sourceTable):
@@ -573,11 +548,11 @@ class cnDb (object):
             columns = self.getExistColumns(tblName=sourceTable)
             srcCol = [c[0] for c in columns]
         else:
-            srcTable = self.__wrapSql(col=self.cName, remove=False)
+            srcTable = self.__wrapSql(col=self.cObj, remove=False)
             if self.cSchema:
                 srcTable = "%s.%s" % (self.__wrapSql(col=self.cSchema, remove=False), srcTable)
 
-            self.cColumns = self.getColumns()
+            self.cColumns = self.getColumnsTypes()
             srcCol = [c[0] for c in self.cColumns]
 
         trgCol = srcCol
@@ -660,7 +635,7 @@ class cnDb (object):
     def __sqlQueryMapping (self,stt=None, addSourceColumn=False, sqlQuery=None):
         tableStructure  = []
         mappingDic      = {}
-        sqlQ            = sqlQuery if sqlQuery else self.cName if self.cIsSql else None
+        sqlQ            = sqlQuery if sqlQuery else self.cObj if self.cIsSql else None
         sttTemp         = None
 
         if sqlQ and len(sqlQ)>0:
