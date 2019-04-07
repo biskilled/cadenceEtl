@@ -125,7 +125,7 @@ def mapper (dicProp):
     if isSource:
         isSource.connect()
         stt         = isSource.structure(stt=stt,addSourceColumn=addSourceColumn)
-        srcColumns  = isSource.getColumns()
+        srcColumns  = isSource.getColumnsTypes()
 
         # convert source data type to target data types
         srcColumns      = sourceToTargetDataTypes(isSource.cType, isTarget.cType, srcColumns)

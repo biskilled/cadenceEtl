@@ -15,12 +15,14 @@
 # You should have received a copy of the GNU General Public License
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+import io
 from collections import OrderedDict
 
 from popEtl.config                  import config
 from popEtl.glob.loaderFunctions    import *
 from popEtl.glob.glob               import p
-from popEtl.glob.enums              import eConnValues, eDbType
+from popEtl.glob.enums              import eConnValues, eDbType, isDbType
 
 from popEtl.connections.db     import cnDb
 from popEtl.connections.file   import cnFile
@@ -42,12 +44,13 @@ class connector ():
 
         if className:
             self.objClass   = className(connDic)
-            self.cType      = self.objClass.cType
+            self.cType = self.objClass.cType
             self.cName      = self.objClass.cName
             self.cObj       = self.objClass.cObj
             self.cursor     = self.objClass.cursor
             self.conn       = self.objClass.conn
             self.cColumns   = self.objClass.cColumns
+            self.cFilter    = self.objClass.cFilter
         else:
             p ("CONNECTOR->init: %s is Not valid connection .... quiting ...." %(str(connDic)) ,"e")
             return
@@ -101,19 +104,22 @@ class connector ():
 
     def getColumnsTypes(self):
         #p("CONNECTOR->getColumns: Get column strucure schema type:%s, name: %s " % (self.cType, self.cName), "ii")
-        return self.objClass.getColumns()
+        return self.objClass.getColumnsTypes()
 
     def structure (self,stt ,addSourceColumn=False,tableName=None, sqlQuery=None):
         #p ("CONNECTOR->structure: Get current schema type:%s, name: %s " %(self.cType, self.cName) ,"ii")
         return self.objClass.structure(stt, addSourceColumn=addSourceColumn,tableName=tableName, sqlQuery=sqlQuery)
 
-    def truncate (self):
+    def truncate (self, tbl=None):
         #p ("CONNECTOR->truncate: Truncating schema type:%s, name: %s " %(self.cType, self.cName) ,"ii")
-        return self.objClass.truncate()
+        return self.objClass.truncate(tbl=tbl)
 
-    def execSP (self, sqlQuery):
+    def execSP (self, sqlQuery=None):
         #p ("CONNECTOR->execSP: schema:%s, name: %s, executing query %s " %(self.cType, self.cName,sqlQuery) ,"ii")
-        return self.objClass.execSP (sqlQuery)
+        return self.objClass.execSP (sqlQuery=sqlQuery)
+
+    def select (self,sql):
+        return self.objClass.select(sql=sql)
 
     def transferToTarget(self, dstObj, sttDic):
         #p("CONNECTOR->transferToTarget: Transfer data from %s, type: %s to %s, type: %s " % (self.cName, self.cType, dstObj.cName, dstObj.cType), "ii")
@@ -159,7 +165,7 @@ class connector ():
     def _setDicConnValue(self,  connJsonVal=None, connType=None, connName=None,connObj=None, connFilter=None, connUrl=None,
                                 extraConnVal=None, fileToLoad=None,isSql=False, isTarget=False, isSource=False):
 
-        retVal = {eConnValues.connName: connName,
+        retVal = {eConnValues.connName: connName if connName else connType,
                   eConnValues.connType: connType.lower() if connType else None,
                   eConnValues.connUrl: connUrl,
                   eConnValues.connUrlExParams: extraConnVal,
@@ -170,6 +176,7 @@ class connector ():
                   eConnValues.connIsSrc: isSource,
                   eConnValues.connIsTar: isTarget}
 
+        # update from Json values
         if isinstance(connJsonVal, (tuple, list)):
             if len(connJsonVal) == 1:
                 retVal[eConnValues.connName] = connJsonVal[0]
@@ -185,82 +192,196 @@ class connector ():
                 p(err, "e")
                 raise Exception(err)
 
-            if retVal[eConnValues.connName] is None:
-                err = "glob->_setDicConnValue: Connection Name is not defined: %s " % (connJsonVal)
+        if retVal[eConnValues.connName] is None:
+            err = "glob->_setDicConnValue: Connection Name is not defined: %s " % (connJsonVal)
+            p(err, "e")
+            raise Exception(err)
+
+        if retVal[eConnValues.connUrl] is None:
+            if retVal[eConnValues.connName] in config.CONN_URL:
+                connUrl = config.CONN_URL[retVal[eConnValues.connName]]
+                retVal[eConnValues.connUrl] = connUrl
+                if isinstance(connUrl, (dict, OrderedDict)):
+                    if eConnValues.connType in connUrl:
+                        retVal[eConnValues.connType] = connUrl[eConnValues.connType].lower()
+                    if eConnValues.connUrl in connUrl:
+                        retVal[eConnValues.connUrl] = connUrl[eConnValues.connUrl]
+                    if eConnValues.fileToLoad in connUrl:
+                        retVal[eConnValues.fileToLoad] = connUrl[eConnValues.fileToLoad]
+            else:
+                err = "glob->_setDicConnValue: Connection Name %s is not defined in CONN_URL config. define names are : %s  " % (
+                retVal[eConnValues.connName], str(list(config.CONN_URL.keys())))
+                p(err, "e")
+                raise Exception(err)
+        # remove number from connection type in case we used it in config.CONN_URL
+        # sample : sql1 - will be rename to sql as a type
+        retVal[eConnValues.connType] = ''.join([i for i in retVal[eConnValues.connType].lower() if not i.isdigit()])
+
+        #################   ACCESS - ADD EXTRA PARAMTERS -> Access File DB
+        if eDbType.ACCESS == retVal[eConnValues.connType]:
+            if retVal[eConnValues.connUrlExParams] is not None:
+                retVal[eConnValues.connUrl] = retVal[eConnValues.connUrl][0] % (
+                            retVal[eConnValues.connUrl][1] + str(
+                        retVal[eConnValues.connUrlExParams].split(".")[0] + ".accdb"))
+            else:
+                err = "glob->_setDicConnValue: Connection %s is missing Access file " % (
+                retVal[eConnValues.connName])
                 p(err, "e")
                 raise Exception(err)
 
-            if retVal[eConnValues.connUrl] is None:
-                if retVal[eConnValues.connName] in config.CONN_URL:
-                    connUrl = config.CONN_URL[retVal[eConnValues.connName]]
-                    retVal[eConnValues.connUrl] = connUrl
-                    if isinstance(connUrl, (dict, OrderedDict)):
-                        if eConnValues.connType in connUrl:
-                            retVal[eConnValues.connType] = connUrl[eConnValues.connType].lower()
-                        if eConnValues.connUrl in connUrl:
-                            retVal[eConnValues.connUrl] = connUrl[eConnValues.connUrl]
-                        if eConnValues.fileToLoad in connUrl:
-                            retVal[eConnValues.fileToLoad] = connUrl[eConnValues.fileToLoad]
-                else:
-                    err = "glob->_setDicConnValue: Connection Name %s is not defined in CONN_URL config. define names are : %s  " % (
-                    retVal[eConnValues.connName], str(list(config.CONN_URL.keys())))
+        #################   LOAD SQL QUERIES FROM FILE - ADD EXTRA PARAMTERS -> File loacation
+        foundQuery = False
+        allParams = []
+        if retVal[eConnValues.fileToLoad] is not None:
+            sqlFile = "%s.sql" % retVal[eConnValues.fileToLoad] if retVal[eConnValues.fileToLoad][-4:] != ".sql" else retVal[eConnValues.fileToLoad]
+
+            if os.path.isfile(sqlFile):
+                with io.open(sqlFile, 'r', encoding=config.PARSER_FILE_ENCODE) as inp:
+                    sqlScript = inp.readlines()
+                    allQueries = self._queryParsetIntoList(sqlScript, getPython=True, removeContent=True, dicProp=None,
+                                                     pythonWord=config.PARSER_SQL_MAIN_KEY)
+
+                    for q in allQueries:
+                        allParams.append(q[1])
+                        if q[0] and q[0] == retVal[eConnValues.connObj]:
+                            retVal[eConnValues.connObj] = q[1]
+                            retVal[eConnValues.connIsSql] = True
+                            foundQuery = True
+                            break
+                if not foundQuery:
+                    err = "glob->_setDicConnValue: There is paramter %s which is not found in %s, existing keys: %s " % (
+                    retVal[eConnValues.connObj], sqlFile, str(allParams))
                     p(err, "e")
                     raise Exception(err)
-            # remove number from connection type in case we used it in config.CONN_URL
-            # sample : sql1 - will be rename to sql as a type
-            retVal[eConnValues.connType] = ''.join([i for i in retVal[eConnValues.connType].lower() if not i.isdigit()])
+            else:
+                err = "glob->_setDicConnValue: %s is not found  " % (sqlFile)
+                p(err, "e")
+                raise Exception(err)
 
-            #################   ACCESS - ADD EXTRA PARAMTERS -> Access File DB
-            if eDbType.ACCESS == retVal[eConnValues.connType]:
-                if retVal[eConnValues.connUrlExParams] is not None:
-                    retVal[eConnValues.connUrl] = retVal[eConnValues.connUrl][0] % (
-                                retVal[eConnValues.connUrl][1] + str(
-                            retVal[eConnValues.connUrlExParams].split(".")[0] + ".accdb"))
-                else:
-                    err = "glob->_setDicConnValue: Connection %s is missing Access file " % (
-                    retVal[eConnValues.connName])
-                    p(err, "e")
-                    raise Exception(err)
+        retVal[eConnValues.connType] = isDbType(retVal[eConnValues.connType])
 
-            #################   LOAD SQL QUERIES FROM FILE - ADD EXTRA PARAMTERS -> File loacation
-            foundQuery = False
-            allParams = []
-            if retVal[eConnValues.fileToLoad] is not None:
-                sqlFile = "%s.sql" % retVal[eConnValues.fileToLoad] if retVal[eConnValues.fileToLoad][
-                                                                       -4:] != ".sql" else retVal[
-                    eConnValues.fileToLoad]
-                if os.path.isfile(sqlFile):
-                    with io.open(sqlFile, 'r', encoding=config.PARSER_FILE_ENCODE) as inp:
-                        sqlScript = inp.readlines()
-                        allQueries = queryParsetIntoList(sqlScript, getPython=True, removeContent=True, dicProp=None,
-                                                         pythonWord=config.PARSER_SQL_MAIN_KEY)
-
-                        for q in allQueries:
-                            allParams.append(q[1])
-                            if q[0] and q[0] == retVal[eConnValues.connObj]:
-                                retVal[eConnValues.connObj] = q[1]
-                                retVal[eConnValues.connIsSql] = True
-                                foundQuery = True
-                                break
-                    if not foundQuery:
-                        err = "glob->_setDicConnValue: There is paramter %s which is not found in %s, existing keys: %s " % (
-                        retVal[eConnValues.connObj], sqlFile, str(allParams))
-                        p(err, "e")
-                        raise Exception(err)
-                else:
-                    err = "glob->_setDicConnValue: %s is not found  " % (sqlFile)
-                    p(err, "e")
-                    raise Exception(err)
-
-            retVal[eConnValues.connType] = isDbType(retVal[eConnValues.connType])
-
-            if retVal[eConnValues.connName] is not None and \
-                    retVal[eConnValues.connType] is not None and \
-                    retVal[eConnValues.connObj] is not None and \
-                    retVal[eConnValues.connUrl] is not None:
-                p("glob->_setDicConnValue: Connection params: %s " % (str(retVal)), "ii")
-                return retVal
-
+        if retVal[eConnValues.connName] is not None and \
+                retVal[eConnValues.connType] is not None and \
+                retVal[eConnValues.connUrl] is not None:
+            p("glob->_setDicConnValue: Connection params: %s " % (str(retVal)), "ii")
+            return retVal
+        else:
             err = "glob->_setDicConnValue: Connection params are not set: %s " % (str(retVal))
             p(err, "e")
             raise Exception(err)
+
+    def _queryParsetIntoList(self, sqlScript, getPython=True, removeContent=True, dicProp=None, pythonWord="popEtl"):
+        if isinstance(sqlScript, (tuple, list)):
+            sqlScript = "".join(sqlScript)
+        # return list of sql (splitted by list of params)
+        allQueries = self._getAllQuery(longStr=sqlScript, splitParam=['GO', u';'])
+
+        if getPython:
+            allQueries = self._getPythonParam(allQueries, mWorld=pythonWord)
+
+        if removeContent:
+            allQueries = self._removeComments(allQueries)
+
+        if dicProp:
+            allQueries = self._replaceProp(allQueries, dicProp)
+
+        return allQueries
+
+    def _getAllQuery(self, longStr, splitParam=['GO', u';']):
+        sqlList = []
+        for splP in splitParam:
+            if len(sqlList) == 0:
+                sqlList = longStr.split(splP)
+            else:
+                tmpList = list([])
+                for sql in sqlList:
+                    tmpList.extend(sql.split(splP))
+                sqlList = tmpList
+        return sqlList
+
+    def _getPythonParam(self, queryList, mWorld="popEtl"):
+        ret = []
+        for query in queryList:
+            # Delete all rows which are not relevant
+            # Regex : <!popEtl XXXX/>
+            # fPythonNot = re.search(r"<!%s([^>].*)/>" % (mWorld), query,flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S)
+            # Regex : <!popEtl> ......... </!popEtl>
+            reg = re.finditer(r"<!%s(.+?)</!%s>" % (mWorld, mWorld), query,
+                              flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S)
+            if reg:
+                for regRemove in reg:
+                    query = query.replace(regRemove.group(0), "")
+
+            # Add python queries into return list
+            # Regex : <popEtl STRING_NAME> ....... </popEtl>
+            # fPython2    = re.search(r"<%s.*/%s>" % (mWorld,mWorld),   query, flags = re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S)
+
+            # Regex : <popEtl STRING_NAME>......</popEtl> --> Take string to the end
+            reg = re.finditer(r"<%s(.+?)>(.+?)</%s>" % (mWorld, mWorld), query,
+                              flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL | re.S)
+
+            if reg:
+                for i, regFind in enumerate(reg):
+                    pythonSeq = regFind.group(0)
+                    pythonVar = regFind.group(1).strip()
+                    querySql = regFind.group(2).strip()
+
+                    if i == 0 and regFind.start() > 0:
+                        queryStart = query[: query.find(pythonSeq)].strip()
+                        if queryStart and len(queryStart) > 0:
+                            ret.append((None, queryStart))
+
+                    ret.append((pythonVar, querySql))
+            else:
+                if query and len(query.strip()) > 0:
+                    ret.append((None, query.strip()))
+        return ret
+
+    def _removeComments(self, listQuery, endOfLine='\n'):
+        retList = []
+        for s in listQuery:
+            isTup = False
+            if isinstance(s, (tuple, list)):
+                pre = s[0].strip() if s[0] else None
+                post = s[1].strip()
+                isTup = True
+            else:
+                post = s.strip()
+
+            post = re.sub(r"--.*$", r"", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE).replace("--", "")
+            post = re.sub(r'\/\*.*\*\/', "", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE | re.DOTALL)
+            post = re.sub(r"print .*$", r"", post, flags=re.IGNORECASE | re.MULTILINE | re.UNICODE).replace("print ",
+                                                                                                            "")
+
+            if endOfLine:
+                while len(post) > 1 and post[0:1] == "\n":
+                    post = post[1:]
+
+                while len(post) > 1 and post[-1:] == "\n":
+                    post = post[:-1]
+
+            if not post or len(post) == 0:
+                continue
+            else:
+                if isTup:
+                    retList.append((pre, post,))
+                else:
+                    retList.append(post)
+
+        return retList
+
+    def _replaceProp(self, allQueries, dicProp):
+        ret = []
+        for query in allQueries:
+            if isinstance(query, (list, tuple)):
+                pr1 = query[0]
+                pr2 = query[1]
+            else:
+                pr2 = query
+            if not pr1 or pr1 and pr1 != "~":
+                for prop in dicProp:
+                    pr2 = (_replaceStr(sString=pr2, findStr=prop, repStr=dicProp[prop], ignoreCase=True))
+
+            tupRet = (pr1, pr2,) if isinstance(query, (list, tuple)) else pr2
+            ret.append(tupRet)
+        return ret

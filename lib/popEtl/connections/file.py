@@ -34,31 +34,39 @@ from popEtl.glob.enums      import eConnValues, eDbType
 
 
 class cnFile ():
-    def __init__ (self, connDic, connName=None, connFolder=None, fileHeader=[]):
-        self.cName      = connDic [ eConnValues.connObj ]  if connDic else connName
-        self.cType      = connDic [ eConnValues.connType ] if connDic else eDbType.FILE
-        self.folderPath = connDic [ eConnValues.connUrl ]  if connDic else connFolder
-        self.fileHeader = fileHeader
+    def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connObj=None, fileHeader=[]):
+        self.cType= connDic[eConnValues.connType] if connDic else connType if connType else eDbType.FILE
+        self.cName= connDic[eConnValues.connObj]  if connDic else connName if connName else self.cType
+        self.cUrl = connDic[eConnValues.connUrl]  if connDic else connUrl
+        self.cObj = connDic[eConnValues.connObj]  if connDic else connObj
         self.cursor     = None
         self.conn       = None
         self.cColumns   = None
+        self.cFilter    = None
 
-        if isinstance(self.folderPath, (dict, OrderedDict)):
-            connProp = self.folderPath.keys()
-        self.fileDelimiter  = self.folderPath['delimiter']  if 'delimiter'   in connProp    else config.FILE_DEFAULT_DELIMITER
-        self.fileHeader     = self.folderPath['header']     if 'header' in connProp         else config.FILE_DEFAULT_HEADER
-        self.folderPath     = self.folderPath['folder']     if 'folder' in connProp         else config.FILE_DEFAULT_FOLDER
-        self.fullPath       = os.path.join(self.folderPath, self.cName)
-        self.newLine        = self.folderPath['newLine']    if 'newLine' in connProp        else config.FILE_DEFAULT_NEWLINE
-        self.encoding       = self.folderPath['encoding']   if 'encoding' in connProp       else config.FILE_DECODING
-        self.errors         = self.folderPath['errors']     if 'errors' in connProp         else config.FILE_LOAD_WITH_CHAR_ERR
+        self.fileHeader = fileHeader
 
-        head, tail = os.path.split (self.cName)
+        if isinstance(self.cUrl, (dict, OrderedDict)):
+            connProp = [x.lower() for x in self.cUrl.keys()]
+            self.fileDelimiter  = self.cUrl[eConnValues.fileDelimiter] if eConnValues.fileDelimiter in connProp else config.FILE_DEFAULT_DELIMITER
+            self.fileHeader     = self.cUrl[eConnValues.fileHeader] if eConnValues.fileHeader in connProp       else config.FILE_DEFAULT_HEADER
+            self.folderPath     = self.cUrl[eConnValues.fileFolder] if eConnValues.fileFolder in connProp       else config.FILE_DEFAULT_FOLDER
+            self.fullPath       = os.path.join(self.folderPath, self.cName)
+            self.newLine        = self.folderPath[eConnValues.fileNewLine]  if eConnValues.fileNewLine in connProp  else config.FILE_DEFAULT_NEWLINE
+            self.encoding       = self.folderPath[eConnValues.fileEncoding] if eConnValues.fileEncoding in connProp else config.FILE_DECODING
+            self.errors         = self.folderPath[eConnValues.fileErrors]   if eConnValues.fileErrors in connProp   else config.FILE_LOAD_WITH_CHAR_ERR
+
+        head, tail = os.path.split (self.cObj)
         if head and len(head)>1 and tail and len (tail)>1:
-            self.fullPath = self.cName
+            self.fullPath = self.cObj
         else:
-            self.fullPath = os.path.join(self.folderPath, self.cName)
-        p ("file-> INIT: %s, Delimiter %s, Header %s " %(str(self.fullPath) , str(self.fileDelimiter) ,str(self.fileHeader) ), "ii")
+            self.fullPath = os.path.join(self.folderPath, self.cObj)
+        if (os.path.isfile(self.fullPath)):
+            p ("file-> INIT: %s, Delimiter %s, Header %s " %(str(self.fullPath) , str(self.fileDelimiter) ,str(self.fileHeader) ), "ii")
+
+    def connect( self, fileName=None):
+        if fileName:
+            self.fullPath = fileName
 
     def close (self):
         pass

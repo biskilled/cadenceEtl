@@ -24,7 +24,6 @@ import logging
 from collections import OrderedDict
 
 from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp, isDbType
-from popEtl.glob.sqlPythonQueries import queryParsetIntoList
 from  popEtl.config import config
 
 def getLogger (

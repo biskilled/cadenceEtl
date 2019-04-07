@@ -32,38 +32,46 @@ import popEtl.connections.dbQueries as queries
 import popEtl.connections.dbQueryParser as queryParser
 
 # Data sources
-aConnection = [x.lower() for x in config.CONNECTIONS_ACTIVE]
-if eDbType.SQL in aConnection or eDbType.ACCESS in aConnection :
-    import pyodbc as odbc #   ceODBC as odbc #pyodbc  # pyodbc version: 3.0.7
+try:
+    import pyodbc as odbc
+except ImportError:
+    p("pyobbc is not installed", "ii")
 
-if eDbType.MYSQL  in aConnection   :
+try:
     import pymysql as pymysql
+except ImportError:
+    p("pymysql is not installed", "ii")
 
-if eDbType.VERTIVA in aConnection :
+try:
     import vertica_python
     # pip install vertica_python
     # Need to install pip install sqlalchemy-vertica-python as well !!!
+except ImportError:
+    p("vertica_python is not installed", "ii")
 
-if eDbType.ORACLE in aConnection  :
-    import cx_Oracle                      # version : 6.1
+try:
+    import cx_Oracle  # version : 6.1
+except ImportError:
+    p("cx_Oracle is not installed", "ii")
 
 class cnDb (object):
     def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connObj=None, connFilter=None):
-        self.cIsSql = connDic [ eConnValues.connIsSql]  if connDic else None
-        self.cType  = connDic[eConnValues.connType]     if connDic else connType
-        self.cName  = connDic [ eConnValues.connName]   if connDic else connName if connName else connType
-        self.cUrl   = connDic[eConnValues.connUrl]      if connDic else connUrl
-        self.cWhere = connDic[eConnValues.connFilter]   if connDic else connFilter
-        self.cObj   = setQueryWithParams(connDic[eConnValues.connObj]) if connDic else connObj
 
-        self.cSchema    = None
-        self.conn       = None
-        self.cursor     = None
+        self.cType = connDic[eConnValues.connType] if connDic else connType
+        self.cName = connDic[eConnValues.connName] if connDic else connName if connName else self.cType
+        self.cUrl  = connDic[eConnValues.connUrl]  if connDic else connUrl
+        self.cObj  = setQueryWithParams(connDic[eConnValues.connObj]) if connDic else connObj
+        self.cursor= None
+        self.conn  = None
+        self.cColumns = []
+        self.cFilter = connDic[eConnValues.connFilter] if connDic else connFilter
+
+        self.cIsSql      = connDic[eConnValues.connIsSql] if connDic else None
+        self.cSchema     = None
         # Will be update if there is a query as source and mapping in query as well (select x as yy.....
         self.cColumnsTDic= None
         self.cColoumnAs  = True
         self.insertSql   = None
-        self.cColumns    = []
 
         if self.cIsSql:
             self.cSQL = self.cObj
@@ -72,8 +80,9 @@ class cnDb (object):
             self.cSQL = "SELECT * FROM "+tblName
 
         if not self.cType or not isDbType(self.cType):
-            p ("Connection type is not valid: %s, use connection from config file" %(str(self.cType)) )
-            return
+            err  = "Connection type is not valid: %s, use connection from config file" %(str(self.cType))
+            raise ValueError(err)
+
         if  not self.cUrl:
             p("Connection URL is not exists, use valid URL conn" )
             return
@@ -84,10 +93,10 @@ class cnDb (object):
             self.cSchema =self.cObj[0] if len(self.cObj) > 1 else config.DATA_TYPE['schema'][self.cType]
             self.cObj  =  self.cObj[1] if len(self.cObj) > 1 else self.cObj[0]
 
-            if self.cWhere and len (self.cWhere)>1:
-                self.cWhere = re.sub (r'WHERE', '', self.cWhere, flags=re.IGNORECASE)
-                self.cWhere = setQueryWithParams (self.cWhere)
-                self.cSQL = self.cSQL + " WHERE " + self.cWhere
+            if self.cFilter and len (self.cFilter)>1:
+                self.cFilter = re.sub (r'WHERE', '', self.cFilter, flags=re.IGNORECASE)
+                self.cFilter = setQueryWithParams (self.cFilter)
+                self.cSQL = self.cSQL + " WHERE " + self.cFilter
 
         objName = "query" if self.cIsSql else self.cObj
         p("db->init: DB type: %s, table: %s" % (self.cType, objName, ), "ii")

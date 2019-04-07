@@ -30,6 +30,13 @@ class eConnValues (object):
     partitionStart  = "start"
     fileToLoad      = "file"
 
+    fileDelimiter   = "delimiter"
+    fileHeader      = "header"
+    fileFolder      = "folder"
+    fileNewLine     = "newLine"
+    fileEncoding    = "encoding"
+    fileErrors      = "errors"
+
 class ePopEtlProp (object):
     src = "source"
     tar = "target"

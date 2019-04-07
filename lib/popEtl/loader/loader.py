@@ -186,7 +186,7 @@ def _updateSourceTargetCompareLog (js):
 def _execLoading ( params ):
     (srcObj, dstObj, mergeConn, sttDic, jFileName, cProc, tProc) = params
     if srcObj and dstObj:
-        p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcDict[eConnValues.connName]), str(dstDict[eConnValues.connName])), "i")
+        p("loader->_execLoading: loading %s out of %s, src: %s, dst: %s " %(str(cProc), str(tProc), str(srcObj.cObj), str(dstObj.cObj) ), "i")
 
         # Managing Destination table
         _execTarget(dstObj=dstObj)
@@ -214,7 +214,7 @@ def _execLoading ( params ):
     if mergeConn:
         p("loader->_execLoading: MERGE !!!! " , "i")
         if not dstObj:
-            dstDict = srcObj
+            dstObj = srcObj
         _execMerge(dstObj=dstObj, mergeConn=mergeConn, sttDic=None, toCreate=True)
         return
 
@@ -311,11 +311,11 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess
 
             if toLoad:
                 if srcObj and tarObj:
-                    p('loader->_extractNodes: SOURCE %s -> TARET %s ; %s -->  %s .......' % (str(srcObj[ eConnValues.connType ]), str(tarObj[ eConnValues.connType ]), srcDic[ eConnValues.connName ], tarDic[ eConnValues.connName ]), "ii")
+                    p('loader->_extractNodes: SOURCE %s -> TARET %s ; %s -->  %s .......' %(srcObj.cType, tarObj.cType, srcObj.cObj, tarObj.cObj), "ii")
                 if tarObj and mergeConn:
-                    p('loader->_extractNodes: Type: %s, TAREGT -> MERGE %s  .......' % (str(tarObj[eConnValues.connType]), tarObj[eConnValues.connName]), "ii")
+                    p('loader->_extractNodes: Type: %s, TAREGT -> MERGE %s  .......' % (tarObj.cType, tarObj.cName), "ii")
                 if srcObj and mergeConn:
-                    p('loader->_extractNodes: Type: %s, SOURCE -> MERGE %s  .......' % (str(srcObj[eConnValues.connType]), srcObj[eConnValues.connName]), "ii")
+                    p('loader->_extractNodes: Type: %s, SOURCE -> MERGE %s  .......' % (srcObj.cType, srcObj.cName), "ii")
                 # if partition --> change to all partitions
                 # update list of data to process:
                 if partition:
