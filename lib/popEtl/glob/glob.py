@@ -176,7 +176,10 @@ def filterFiles (modelToExec, dirData=None, includeFiles=None, notIncludeFiles=N
 
     return jsonFiles
 
-class validation ():
+class validation (object):
+    def __init__ (self):
+        pass
+
     @property
     def CON_DIR_DATA(self):
         return config.DIR_DATA
@@ -207,3 +210,63 @@ class validation ():
                 config.CONN_URL[v] = val[v]
         else:
             raise ValueError("Value must be dicionary !")
+
+    @property
+    def TABLE_HISTORY(self):
+        return config.TABLE_HISTORY
+    @TABLE_HISTORY.setter
+    def TABLE_HISTORY(self, val):
+        if val==True or val==False:
+            config.TABLE_HISTORY = val
+        else:
+            raise ValueError("Value must be True or False !")
+
+    @property
+    def TO_TRUNCATE(self):
+        return config.TO_TRUNCATE
+
+    @TO_TRUNCATE.setter
+    def TO_TRUNCATE(self, val):
+        if val == True or val == False:
+            config.TO_TRUNCATE = val
+        else:
+            raise ValueError("Value must be True or False !")
+
+    @property
+    def RESULT_LOOP_ON_ERROR(self):
+        return config.RESULT_LOOP_ON_ERROR
+
+    @RESULT_LOOP_ON_ERROR.setter
+    def RESULT_LOOP_ON_ERROR(self, val):
+        if val == True or val == False:
+            config.RESULT_LOOP_ON_ERROR = val
+        else:
+            raise ValueError("Value must be True or False !")
+
+    @property
+    def LOGS_IN_DB(self):
+        return config.LOGS_IN_DB
+
+    @LOGS_IN_DB.setter
+    def LOGS_IN_DB(self, val):
+        if val == True or val == False:
+            config.LOGS_IN_DB = val
+        else:
+            raise ValueError("Value must be True or False !")
+
+    @property
+    def FILES_NOT_INCLUDE(self):
+        return config.FILES_NOT_INCLUDE
+
+    @FILES_NOT_INCLUDE.setter
+    def FILES_NOT_INCLUDE(self, val):
+        config.FILES_NOT_INCLUDE = val
+
+    @property
+    def FILES_INCLUDE(self):
+        return config.FILES_INCLUDE
+
+    @FILES_INCLUDE.setter
+    def FILES_INCLUDE(self, val):
+        config.FILES_INCLUDE = val
+
