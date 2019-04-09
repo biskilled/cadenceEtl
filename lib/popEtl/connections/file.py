@@ -67,6 +67,10 @@ class cnFile ():
     def connect( self, fileName=None):
         if fileName:
             self.fullPath = fileName
+            return True
+        else:
+            err = "File path is not correct ! " %(self.fullPath)
+            raise ValueError(err)
 
     def close (self):
         pass

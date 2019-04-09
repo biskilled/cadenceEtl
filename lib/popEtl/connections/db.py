@@ -102,24 +102,31 @@ class cnDb (object):
         p("db->init: DB type: %s, table: %s" % (self.cType, objName, ), "ii")
 
     def connect (self):
-        if eDbType.MYSQL == self.cType:
-            self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
-            self.cursor = self.conn.cursor()
-        elif eDbType.VERTIVA == self.cType:
-            self.conn = vertica_python.connect(self.cUrl)
-            self.cursor = self.conn.cursor()
-        elif eDbType.ORACLE == self.cType:
-            self.conn = cx_Oracle.connect(self.cUrl['user'], self.cUrl['pass'], self.cUrl['dsn'])
-            if 'nls' in self.cUrl:
-                os.environ["NLS_LANG"] = self.cUrl['nls']
-            self.cursor = self.conn.cursor()
-        elif eDbType.ACCESS == self.cType:
-            self.conn       = odbc.connect (self.cUrl) # , ansi=True
-            self.cursor     = self.conn.cursor()
-            self.cColoumnAs = False
-        else:
-            self.conn = odbc.connect (self.cUrl) #ansi=True
-            self.cursor = self.conn.cursor()
+        try:
+            if eDbType.MYSQL == self.cType:
+                self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
+                self.cursor = self.conn.cursor()
+            elif eDbType.VERTIVA == self.cType:
+                self.conn = vertica_python.connect(self.cUrl)
+                self.cursor = self.conn.cursor()
+            elif eDbType.ORACLE == self.cType:
+                self.conn = cx_Oracle.connect(self.cUrl['user'], self.cUrl['pass'], self.cUrl['dsn'])
+                if 'nls' in self.cUrl:
+                    os.environ["NLS_LANG"] = self.cUrl['nls']
+                self.cursor = self.conn.cursor()
+            elif eDbType.ACCESS == self.cType:
+                self.conn       = odbc.connect (self.cUrl) # , ansi=True
+                self.cursor     = self.conn.cursor()
+                self.cColoumnAs = False
+            else:
+                self.conn = odbc.connect (self.cUrl) #ansi=True
+                self.cursor = self.conn.cursor()
+            return True
+        except Exception as e:
+            err = "Error connecting into DB: %s, ERROR: %s " %(self.cType, str(e))
+            raise ValueError(err)
+
+
 
     def close(self):
         try:

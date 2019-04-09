@@ -162,6 +162,12 @@ class connector ():
         #p ("CONNECTOR->cntRows: Count rows type:%s, name: %s " %(self.cType, self.cName) ,"ii")
         return self.objClass.cntRows()
 
+    def test (self):
+        if self.connect():
+            p("SUCCESS: %s, type: %s " %(self.cName, self.cType) )
+        else:
+            p("FAILED: %s, type: %s " % (self.cName, self.cType))
+
     def _setDicConnValue(self,  connJsonVal=None, connType=None, connName=None,connObj=None, connFilter=None, connUrl=None,
                                 extraConnVal=None, fileToLoad=None,isSql=False, isTarget=False, isSource=False):
 

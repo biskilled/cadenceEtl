@@ -21,7 +21,6 @@ import os
 import io
 import datetime
 import logging
-from collections import OrderedDict
 
 from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp, isDbType
 from  popEtl.config import config
