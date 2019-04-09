@@ -281,3 +281,24 @@ class validation (object):
         else:
             err = "param must be dictionary: %s" %(str(val))
             raise ValueError(err)
+
+    @property
+    def LOGS_DEBUG(self):
+        return config.LOGS_DEBUG
+
+    @LOGS_DEBUG.setter
+    def LOGS_DEBUG(self, val):
+        CRITICAL= 50
+        ERROR   = 40
+        WARNING = 30
+        INFO    = 20
+        DEBUG   = 10
+        NOTSET  = 0
+
+        if val in (CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET):
+            config.LOGS_DEBUG = val
+        else:
+            err = "Logging is not valid, valid values: 0,10,20,30,40,50"
+            raise ValueError(err)
+
+
