@@ -21,6 +21,7 @@ import os
 import io
 import datetime
 import logging
+from collections import OrderedDict
 
 from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp, isDbType
 from  popEtl.config import config
@@ -269,3 +270,14 @@ class validation (object):
     def FILES_INCLUDE(self, val):
         config.FILES_INCLUDE = val
 
+    @property
+    def QUERY_PARAMS(self):
+        return config.QUERY_PARAMS
+
+    @QUERY_PARAMS.setter
+    def QUERY_PARAMS(self, val):
+        if isinstance(val, (dict, OrderedDict ) ):
+            config.QUERY_PARAMS = val
+        else:
+            err = "param must be dictionary: %s" %(str(val))
+            raise ValueError(err)
