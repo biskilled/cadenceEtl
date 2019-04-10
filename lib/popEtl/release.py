@@ -18,7 +18,7 @@
 from __future__ import  (absolute_import, division, print_function)
 __metaclass__ = type
 
-__version__ = '1.1.11'
+__version__ = '1.1.12'
 __author__  = 'BiSkilled'
 __codename__= 'Why not?'
 

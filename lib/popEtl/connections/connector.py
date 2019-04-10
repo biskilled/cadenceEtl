@@ -47,8 +47,6 @@ class connector ():
             self.cType = self.objClass.cType
             self.cName      = self.objClass.cName
             self.cObj       = self.objClass.cObj
-            self.cursor     = self.objClass.cursor
-            self.conn       = self.objClass.conn
             self.cColumns   = self.objClass.cColumns
             self.cFilter    = self.objClass.cFilter
         else:
@@ -57,6 +55,8 @@ class connector ():
 
     def connect (self):
         self.objClass.connect()
+        self.cursor = self.objClass.cursor
+        self.conn = self.objClass.conn
 
     def close (self):
         #p ("CONNECTOR->close: CLOSING CONNECTION type:%s, name: %s " %(self.cType, self.cName) ,"ii")

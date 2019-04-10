@@ -25,7 +25,7 @@ import sys
 from popEtl.config import config
 from popEtl.glob.glob import p
 from popEtl.loader.loadExecSP import execQuery
-from popEtl.connections.db import cnDb
+from popEtl.connections.connector import connector
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -190,7 +190,8 @@ def logsToDb (js=None):
         totalErrRows = len (config.LOGS_ARR_E)
         totalInfoRows = len(config.LOGS_ARR_I)
 
-        logObj = cnDb (connName="logs", connType=connType, connUrl=connUrl)
+        logObj = connector (connType=connType, connJsonVal=connUrl)
+        logObj.connect()
         for tbl in config.LOGS_DB_TBL:
             fList   = config.LOGS_DB_TBL[tbl]["f"]
             logType = config.LOGS_DB_TBL[tbl]["t"]
@@ -206,7 +207,6 @@ def logsToDb (js=None):
                 logObj.cursor.executemany(tarSQL, config.LOGS_ARR_I)
                 logObj.conn.commit()
                 p("gFunc->logsToDb: INFO: Update %s with toal of %s rows " % (str(tbl), str(totalInfoRows)), "ii")
-            logObj.conn.commit()
         logObj.close()
         #config.LOGS_ARR_E = []
         #config.LOGS_ARR_I = []
@@ -288,7 +288,7 @@ def parseBNZSql (sql):
         p(r)
 
 def tableToStt (tblName, connUrl, connType='sql'):
-    db = cnDb (connObject=tblName, conType=connType, connUrl=connUrl)
+    db = connector (connType=connType, connUrl=connUrl,connObj=tblName)
     tblCol = db.structure(stt=None,addSourceColumn=True)
     p ('{"target":["'+connType+'","'+tblName+'"],')
     p ('\t"stt":{')

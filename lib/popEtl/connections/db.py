@@ -488,7 +488,6 @@ class cnDb (object):
                                 oldName = "%s_%s_%s]" % (tblName[:-1], str(time.strftime('%y%m%d')), str(num))
                             else:
                                 oldName = "%s_%s_%s" % (tblName, str(time.strftime('%y%m%d')), str(num))
-                            oldName = oldName[: oldName.rfind('_')] + "_" + str(num)
                     if oldName:
                         p ("db-> __cloneObject: Table History is ON and changed, table %s exists ... will rename to %s" %(str (tblName) , str(oldName) ), "ii")
                         oldName = oldName[oldName.find('.')+1:]
@@ -528,7 +527,7 @@ class cnDb (object):
             sql = [sql]
         try:
             for s in sql:
-                s = decodeStrPython2Or3 (sObj=s, un=True)
+                #s = decodeStrPython2Or3 (sObj=s, un=True) leave it as STR
                 self.cursor.execute(s)  # if 'ceodbc' in odbc.__name__.lower() else self.conn.execute(s)
             if commit:
                 self.conn.commit()          # if 'ceodbc' in odbc.__name__.lower() else self.cursor.commit()
@@ -624,7 +623,7 @@ class cnDb (object):
                         boolFind = True
                         colType = allTableStrucure[tblName][colOrg][2]
                         colTbl = allTableStrucure[tblName][colOrg][1]
-                        colName = colNameL
+                        colName = col
                         break
 
         elif not tblName:
@@ -642,7 +641,7 @@ class cnDb (object):
                             boolFind = True
                             colType = allTableStrucure[tblName][colOrg][2]
                             colTbl  = allTableStrucure[tblName][colOrg][1]
-                            colName = colNameL
+                            colName = col
                             break
         if not boolFind:
             p("db->_sqlQueryMappingHelp there is column mapping which is not exists in any source table, ignoring. column: %s, tables: %s " % (str(col), str(allTableStrucure.keys())), "ii")
