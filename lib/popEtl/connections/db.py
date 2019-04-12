@@ -33,9 +33,13 @@ import popEtl.connections.dbQueryParser as queryParser
 
 # Data sources
 try:
-    import pyodbc as odbc
+    import ceODBC as odbc
 except ImportError:
-    p("pyobbc is not installed", "ii")
+    p("ceODBC is not installed will try to install pyodbc", "ii")
+    try:
+        import pyodbc as odbc
+    except ImportError:
+        p("pyobbc is not installed", "ii")
 
 try:
     import pymysql as pymysql
@@ -125,8 +129,6 @@ class cnDb (object):
         except Exception as e:
             err = "Error connecting into DB: %s, ERROR: %s " %(self.cType, str(e))
             raise ValueError(err)
-
-
 
     def close(self):
         try:
@@ -271,9 +273,12 @@ class cnDb (object):
                 p(e, "e")
 
                 if config.RESULT_LOOP_ON_ERROR:
-                    p("db->loadData: ERROR, Loading row by row  ", "e")
                     iCnt = 0
                     tCnt = len (results)
+                    errDict = {}
+                    totalErrorToLooap = int (tCnt*0.1)
+                    totalErrorsFound  = 0
+                    p("db->loadData: ERROR, Loading row by row up to %s errors out of %s rows " %(str(totalErrorToLooap),str(tCnt)), "e")
                     for r in results:
                         try:
                             iCnt+=1
@@ -281,19 +286,27 @@ class cnDb (object):
                             self.cursor.executemany(tarSQL, r)
                             self.conn.commit()
                         except Exception as e:
-                            ret = ""
-                            for col in r[0]:
-                                if col is None:
-                                    ret += str(col) + ","
-                                elif str(col).replace(".", "").replace(",", "").isdigit():
-                                    ret += str(col) + " ,"
-                                else:
-                                    ret += "'" + str(col) + "' ,"
-                            p("db->loadData: ERROR, LOOPING ON ALL RESULTS, ROW ERROR ", "e")
-                            p(e, "e")
-                            p(tarSQL, "e")
-                            p(ret, "e")
-                    p("db->loadData: ERROR Row by row: loader %s out of %s  " %(str(iCnt),str(tCnt)) , "e")
+                            totalErrorsFound+=1
+                            if totalErrorsFound>totalErrorToLooap:
+                                break
+                            errMsg = str(e).lower()
+
+                            if errMsg not in errDict:
+                                errDict[errMsg]=0
+                                ret = ""
+                                for col in r[0]:
+                                    if col is None: ret += "Null, "
+                                    else: ret += "'%s'," %(col)
+                                p(tarSQL, "e")
+                                p(ret, "e")
+                                p(e, "e")
+                            else:
+                                errDict[errMsg]+=1
+
+
+                    p("db->loadData: ERROR Row by row: Total Errros found: %s out of %s, quiting  " %(str(totalErrorToLooap),str(tCnt)) , "e")
+                    for err in errDict:
+                        p("Count errors: %s, MSG: %s: " %(str(err),str(errDict[err])), "e")
         return
 
     def transferToTarget(self, dstObj, srcVsTar, fnDic, pp):

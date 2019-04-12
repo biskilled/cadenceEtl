@@ -297,8 +297,7 @@ class validation (object):
 
         if val in (CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET):
             config.LOGS_DEBUG = val
+            logg = getLogger(LOGS_DEBUG=val)
         else:
             err = "Logging is not valid, valid values: 0,10,20,30,40,50"
             raise ValueError(err)
-
-
