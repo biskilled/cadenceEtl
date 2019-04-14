@@ -102,6 +102,16 @@ class config:
     PARSER_SQL_MAIN_KEY = "popEtl"
     PARSER_FILE_ENCODE  = "windows-1255"
 
+    #LOGS NEW
+    LOGS_DEBUG = logging.DEBUG
+    LOGS_DIR   = None
+    LOGS_INFO_NAME = 'log'
+    LOGS_ERR_NAME  = 'log'
+    LOGS_LOGGER    = None
+
+
+
+
     #logs in DB
     LOGS_IN_DB          = True
     LOGS_DB_TIME_STEMP  = datetime.datetime.today()
@@ -109,7 +119,7 @@ class config:
     LOGS_ARR_I          = []
     LOGS_ARR_E          = []
     LOGS_COUNT_SRC_DST = False
-    LOGS_DEBUG          = logging.DEBUG
+
 
     LOGS_DB_TBL = {"AAA_LOG_ERR":{"d":"startDate","f":["updateDate","startDate","logType","dDesc"],"t":"error","days":10},
                    "AAA_LOG_INFO": {"d": "startDate", "f": ["updateDate","startDate","logType","dDesc"],"t":"info", "days":10}

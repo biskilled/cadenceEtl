@@ -24,7 +24,15 @@ import logging
 from collections import OrderedDict
 
 from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp, isDbType
-from  popEtl.config import config
+from popEtl.config import config
+from popEtl.glob.logsManager import getLogger
+
+logger = getLogger(logStdout=True, logDir=config.LOGS_DIR, logFile=config.LOGS_INFO_NAME,logErrFile=config.LOGS_ERR_NAME,
+                  toSendErr=True, loggLevel=config.LOGS_DEBUG)
+
+
+logg = logger.getLogger()
+
 
 def getLogger (
     LOG_FORMAT     = '%(asctime)s %(levelname)s %(message)s',
@@ -301,3 +309,27 @@ class validation (object):
         else:
             err = "Logging is not valid, valid values: 0,10,20,30,40,50"
             raise ValueError(err)
+
+    @property
+    def LOGS_DIR(self):
+        return config.LOGS_DIR
+    @LOGS_DIR.setter
+    def LOGS_DIR(self, val):
+        config.LOGS_DIR=val
+
+    @property
+    def LOGS_INFO_NAME(self):
+        return config.LOGS_INFO_NAME
+
+    @LOGS_INFO_NAME.setter
+    def LOGS_INFO_NAME(self, val):
+        config.LOGS_INFO_NAME = val
+
+    @property
+    def LOGS_ERR_NAME(self):
+        return config.LOGS_ERR_NAME
+
+    @LOGS_ERR_NAME.setter
+    def LOGS_ERR_NAME(self, val):
+        config.LOGS_ERR_NAME = val
+
