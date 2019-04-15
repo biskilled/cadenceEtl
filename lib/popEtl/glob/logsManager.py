@@ -128,7 +128,6 @@ class manageTime (object):
                         self.loggObj.info("Delete File %s" %(path))
 
     def sendSMTPmsg (self, msgName, onlyOnErr=False, withErr=True):
-
         htmlDic = OrderedDict()
         msgSubj =  "Loading JOB %s " %(msgName)
 

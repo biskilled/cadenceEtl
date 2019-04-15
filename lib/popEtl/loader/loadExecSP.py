@@ -25,7 +25,7 @@ import sys
 import multiprocessing
 from collections import OrderedDict
 
-from popEtl.connections.db  import cnDb
+from popEtl.connections.connector  import connector
 from popEtl.config          import config
 from popEtl.glob.glob       import p
 
@@ -111,7 +111,7 @@ def __execSql ( params ):
                 p ("loadExecSP->__execSql Finish Executing : %s " %line, "i")
 
     # open connection
-    db = cnDb (connType=connType, connUrl=connString)
+    db = connector(connJsonVal=None, connType=None, connUrl=None)
 
     if str(sqlScript).endswith(".sql") and os.path.isfile(sqlScript):
         with io.open(sqlScript, 'r',  encoding=config.FILE_ENCODING) as inp:
