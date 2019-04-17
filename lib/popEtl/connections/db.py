@@ -130,6 +130,7 @@ class cnDb (object):
             err = "Error connecting into DB: %s, ERROR: %s " %(self.cType, str(e))
             raise ValueError(err)
 
+
     def close(self):
         try:
             if self.cursor: self.cursor.close()

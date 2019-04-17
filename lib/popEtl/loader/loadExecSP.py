@@ -95,32 +95,32 @@ def __split_sql_expressions(text):
     return results
 
 def __execSql ( params ):
-    (sqlScript, locParams, connType, connString) = params
-    def __execEachLine (db, sqlTxt):
+    (sqlScript, locParams, connObj) = params
+    connObj.connect()
+    def __execEachLine (connObj, sqlTxt):
         sqlQuery = __split_sql_expressions(sqlTxt)
 
         isParam = True if len(locParams) > 0 else False
         for line in sqlQuery:
             if isParam:
-                line = __replaceParameters(connType, line, locParams)
+                line = __replaceParameters(connObj.cType, line, locParams)
             if 'PRINT' in line:
                 disp = line.split("'")[1]
                 p('SQL PRINT: ' + disp, "i")
             if len(line) > 1:
-                db.execSP(line)
+                connObj.execSP(line)
                 p ("loadExecSP->__execSql Finish Executing : %s " %line, "i")
-
-    # open connection
-    db = connector(connJsonVal=None, connType=None, connUrl=None)
 
     if str(sqlScript).endswith(".sql") and os.path.isfile(sqlScript):
         with io.open(sqlScript, 'r',  encoding=config.FILE_ENCODING) as inp:
-            __execEachLine(db, inp)
-    else:
-        __execEachLine(db, sqlScript)
-    db.close()
+            __execEachLine(connObj, inp)
 
-def __execParallel (priority, ListOftupleFiles, connType, connString):
+    else:
+        __execEachLine(connObj, sqlScript)
+    connObj.close()
+
+
+def __execParallel (priority, ListOftupleFiles, connObj):
     multiProcessParam = []
     multiProcessFiles = ''
 
@@ -129,26 +129,28 @@ def __execParallel (priority, ListOftupleFiles, connType, connString):
         locParams   = tupleFiles[1]
 
         for sqlScript in sqlFiles:
-            multiProcessParam.append((sqlScript, locParams, connType, connString))
+            multiProcessParam.append( (sqlScript, locParams, connObj,) )
             multiProcessFiles += "'" + sqlScript + "' ; "
 
     # single process
     if priority<0 or len(multiProcessParam)<2:
-        p("loadExcelSP->__execParallel: exec on SINGLE process, file %s" % (str(multiProcessParam[0])), "ii")
+        p("loadExcelSP->__execParallel: SINGLE process: %s" % (str(multiProcessFiles)), "ii")
         for query in multiProcessParam:
             __execSql(query)
 
     # multiprocess execution
     else:
         if len(multiProcessParam) > 1:
-            p ("loadExcelSP->__execParallel: exec on MULTI process, file list %s" %(str(multiProcessFiles)), "ii")
+            p ("loadExcelSP->__execParallel: MULTI process: %s" %(str(multiProcessFiles)), "ii")
             # Strat runing all processes
             proc = multiprocessing.Pool(config.NUM_OF_PROCESSES).map( __execSql ,multiProcessParam )
 
     p("loadExcelSP->__execParallel: FINISH Excecuting priority %s, loaded files: %s >>>> " %(str(priority), str (multiProcessFiles)), "i")
 
 # sqlWithParamList --> list of tuple (file name, paramas)
-def execQuery (connType, connString ,sqlWithParamList):
+def execQuery (sqlWithParamList, connJsonVal=None,connType=None, connUrl=None ):
+    connObj = connector (connJsonVal=connJsonVal,connType=connType, connUrl=connUrl)
+    connObj.connect()
     allFiles    = {}
     sqlFiles    = []
     locParams   = {}
@@ -170,13 +172,13 @@ def execQuery (connType, connString ,sqlWithParamList):
 
         # sql file is list of all files to execute
         if os.path.isdir(locName):
-            p("loadExcelSP->execQuery: Start executing SQL queries, conn: %s, type: %s from folder %s parallel mode: %s" % (str(connString),str(connType), str(locName), str(parallelProcess)), "ii")
+            p("loadExcelSP->execQuery: >>> CONNENCTION:%s, DIRECTORY: %s " % (connObj.cType, str(locName)), "ii")
             sqlFiles = [os.path.join(locName, pos_sql)  for pos_sql in os.listdir(locName) if pos_sql.endswith('.sql')]
         elif os.path.isfile(locName):
-            p("loadExcelSP->execQuery: Start executing SQL queries, conn: %s from file %s parallel mode: %s" % (str(connString), str(locName),str(parallelProcess)), "ii")
+            p("loadExcelSP->execQuery: >>> CONNENCTION:%s, PARALLEL:%s, FILE: %s  " % (connObj.cType, str(parallelProcess), str(locName)), "ii")
             sqlFiles.append(locName)
         else:
-            p("loadExcelSP->execQuery: %s is not a file or a folder, will exec as query, conn: %s >>>> " % (str(locName), str(connString)), "ii")
+            p("loadExcelSP->execQuery: >>> CONNENCTION:%s, QUERY: %s" % (connObj.cType, str(locName) ), "ii")
             sqlFiles.append(locName)
 
         # Adding all script into ordered dictionary
@@ -190,5 +192,6 @@ def execQuery (connType, connString ,sqlWithParamList):
     for priority  in OrderedDict (sorted (allFiles.items())):
 
         p ('loadExcelSP->execQuery: Executing prioiriy %s >>>>' %str(priority), "ii")
-        __execParallel (priority, allFiles[priority], connType, connString)
+        __execParallel (priority, allFiles[priority], connObj)
 
+    connObj.close()

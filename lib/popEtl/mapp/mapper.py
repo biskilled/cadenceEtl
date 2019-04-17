@@ -27,7 +27,7 @@ from collections            import OrderedDict
 from popEtl.config          import config
 from popEtl.glob.glob       import p, getDicKey, filterFiles
 from popEtl.glob.enums      import eConnValues, ePopEtlProp
-from popEtl.glob.globalDBFunctions import checkSequence, logsToDb
+from popEtl.glob.globalDBFunctions import checkSequence
 from popEtl.connections.connector  import connector
 
 # mapping - change source data type to destination data type
@@ -305,6 +305,5 @@ def model (dicObj=None, sourceList=None, destList=None):
                 jText = json.load(jsonFile , object_pairs_hook=OrderedDict)
                 _extractNodes(jText=jText, jFileName=js, sourceList=sourceList, destList=destList)
 
-    if config.LOGS_IN_DB: logsToDb()
     p ('mapper->model: FINISH MAPPING >>>>>', "i")
     p ('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', "ii")

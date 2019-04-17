@@ -30,7 +30,6 @@ from popEtl.glob.glob               import p, setQueryWithParams, getDicKey, fil
 from popEtl.glob.enums              import eConnValues, ePopEtlProp
 from popEtl.connections.dbSqlLite   import sqlLite
 from popEtl.connections.connector   import connector
-from popEtl.glob.globalDBFunctions  import logsToDb
 
 # Will merge table with connection in source object
 def _execMerge (dstObj, mergeConn, sttDic, toCreate=True):
@@ -218,8 +217,6 @@ def _execLoading ( params ):
         _execMerge(dstObj=dstObj, mergeConn=mergeConn, sttDic=None, toCreate=True)
         return
 
-    if config.LOGS_IN_DB : logsToDb( str(jFileName)+":"+str(dstObj.cName) )
-
 def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess=None):
     processList = []
     loadedObject= []
@@ -392,9 +389,7 @@ def trasnfer (dicObj=None, sourceList=None, destList=None):
             p("loader->loading: Start loading from file %s, folder: %s >>>>> >>>>>>" %(str(js), str(config.DIR_DATA)), "i")
             loadedObject = _extractNodes(jText, jFileName=js, sourceList=sourceList, destList=destList)
             p("loader->loading: Finish loading from file %s >>>>>>" %(str(js)), "i")
-            if config.LOGS_COUNT_SRC_DST: _updateSourceTargetCompareLog(js)
 
-    if config.LOGS_IN_DB: logsToDb()
     p("loader->loading: FINISH LOADING, Loader into : " + str (loadedObject), "i")
 
 if __name__ == '__main__':

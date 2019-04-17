@@ -32,6 +32,7 @@ class connector ():
                         extraConnVal=None, fileToLoad=None, isSql=False, isTarget=False, isSource=False):
         # connProp, connUrl=None, isSql=False, fileName=None
         # Expose all paramters into mapper and loader classes
+
         connDic = self._setDicConnValue(connJsonVal=connJsonVal, connType=connType, connName=connName,
                                         connObj=connObj, connFilter=connFilter, connUrl=connUrl,extraConnVal=extraConnVal,
                                         fileToLoad=fileToLoad,isSql=isSql, isTarget=isTarget, isSource=isSource )
@@ -40,11 +41,14 @@ class connector ():
             return
 
         self.objClass   = None
+        self.cursor     = None
+        self.conn       = None
+
         className   = eval ( config.CONNECTIONS_ACTIVE[connDic [eConnValues.connType] ] )
 
         if className:
             self.objClass   = className(connDic)
-            self.cType = self.objClass.cType
+            self.cType      = self.objClass.cType
             self.cName      = self.objClass.cName
             self.cObj       = self.objClass.cObj
             self.cColumns   = self.objClass.cColumns
@@ -61,6 +65,8 @@ class connector ():
     def close (self):
         #p ("CONNECTOR->close: CLOSING CONNECTION type:%s, name: %s " %(self.cType, self.cName) ,"ii")
         self.objClass.close()
+        self.cursor = None
+        self.conn   = None
 
     def create (self, stt=None, seq=None,tblName=None):
         if self.objClass:
@@ -171,16 +177,18 @@ class connector ():
     def _setDicConnValue(self,  connJsonVal=None, connType=None, connName=None,connObj=None, connFilter=None, connUrl=None,
                                 extraConnVal=None, fileToLoad=None,isSql=False, isTarget=False, isSource=False):
 
-        retVal = {eConnValues.connName: connName if connName else connType,
-                  eConnValues.connType: connType.lower() if connType else None,
-                  eConnValues.connUrl: connUrl,
-                  eConnValues.connUrlExParams: extraConnVal,
-                  eConnValues.connObj: connObj,
-                  eConnValues.connFilter: connFilter,
-                  eConnValues.fileToLoad: fileToLoad,
-                  eConnValues.connIsSql: isSql,
-                  eConnValues.connIsSrc: isSource,
-                  eConnValues.connIsTar: isTarget}
+
+        retVal={
+                eConnValues.connType: connType.lower() if connType else None,
+                eConnValues.connName: connName if connName else connType,
+                eConnValues.connUrl: connUrl,
+                eConnValues.connUrlExParams: extraConnVal,
+                eConnValues.connObj: connObj,
+                eConnValues.connFilter: connFilter,
+                eConnValues.fileToLoad: fileToLoad,
+                eConnValues.connIsSql: isSql,
+                eConnValues.connIsSrc: isSource,
+                eConnValues.connIsTar: isTarget}
 
         # update from Json values
         if isinstance(connJsonVal, (tuple, list)):

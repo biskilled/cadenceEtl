@@ -50,7 +50,13 @@ def createHtmlFromList(htmlList, htmlHeader=None):
             for row in lRows:
                 tblLinesTD = ""
                 for col in row:
-                    tblLinesTD += '<td>%s</td>' % str(col)
+                    strRow = ""
+                    if isinstance(col, (list,tuple)):
+                        for c in col:
+                            strRow+= "%s <br>" %str(c)
+                    else:
+                        strRow = str(col)
+                    tblLinesTD += '<td>%s</td>' %strRow
                 tblLines+=  "<tr>\n\t\t\t\t\t%s\n\t\t\t\t</tr>\n\t\t\t\t" %tblLinesTD
             tblLines = """
             <tbody class="allign-center">

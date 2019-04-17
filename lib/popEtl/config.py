@@ -73,12 +73,6 @@ class config:
     NUM_OF_PROCESSES        = 1
     NUM_OF_LOADING_THREAD   = 1
 
-    SMTP_SERVER             = ""
-    SMTP_SERVER_USER        = ""
-    SMTP_SERVER_PASS        = ""
-    SMTP_SENDER             = ""
-    SMTP_RECEIVERS          = ['info@biSkilled.com']
-
     DATA_TYPE = \
     {'varchar'  :{'sql':'varchar',                      'oracle':('varchar','varchar2'),'mysql':'varchar',      'vertica':'varchar', },
      'v'        :{'sql':'varchar',                      'oracle':('varchar','varchar2'),'mysql':'varchar',      'vertica':'varchar'},
@@ -109,16 +103,12 @@ class config:
     LOGS_ERR_NAME  = 'log'
     LOGS_LOGGER    = None
 
-
-
-
-    #logs in DB
-    LOGS_IN_DB          = True
-    LOGS_DB_TIME_STEMP  = datetime.datetime.today()
-    LOGS_PRINT          = True
-    LOGS_ARR_I          = []
-    LOGS_ARR_E          = []
-    LOGS_COUNT_SRC_DST = False
+    #SMTP Configuration
+    SMTP_SERVER             = ""
+    SMTP_SERVER_USER        = ""
+    SMTP_SERVER_PASS        = ""
+    SMTP_SENDER             = ""
+    SMTP_RECEIVERS          = ['info@biSkilled.com']
 
 
     LOGS_DB_TBL = {"AAA_LOG_ERR":{"d":"startDate","f":["updateDate","startDate","logType","dDesc"],"t":"error","days":10},

@@ -25,70 +25,25 @@ from collections import OrderedDict
 
 from popEtl.glob.enums import eConnValues, eDbType, ePopEtlProp, isDbType
 from popEtl.config import config
-from popEtl.glob.logsManager import getLogger
-
-logger = getLogger(logStdout=True, logDir=config.LOGS_DIR, logFile=config.LOGS_INFO_NAME,logErrFile=config.LOGS_ERR_NAME,
-                  toSendErr=True, loggLevel=config.LOGS_DEBUG)
-
+from popEtl.glob.logsManager import logger
 
 logg = logger.getLogger()
 
-
-def getLogger (
-    LOG_FORMAT     = '%(asctime)s %(levelname)s %(message)s',
-    LOG_DIR        = None,
-    LOG_FILE       = 'file',
-    LOGS_DEBUG      = logging.DEBUG
-    ):
-
-    #logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-    logFormatter= logging.Formatter(LOG_FORMAT)
-    logg  = logging.getLogger()
-
-    if LOG_DIR:
-        fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_DIR, LOG_FILE))
-        fileHandler.setFormatter(logFormatter)
-        logg.addHandler(fileHandler)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(logFormatter)
-    logg.addHandler(consoleHandler)
-
-    logg.setLevel( LOGS_DEBUG )
-
-    return logg
-
-logg = getLogger (LOGS_DEBUG=config.LOGS_DEBUG)
 def p(msg, ind='I'):
     ind = ind.upper()
     indPrint = {'E': 'ERROR>> ',
                 'I': 'INFO >> ',
                 'II': 'DEBUG>> ',
                 'III': 'Progress>> '}
-    allowToPrint    = ['E', 'I','II', 'III']  #  'II', 'III'
-    #allowToPrint = ['E','I']
-    allowToSaveInDB_E = ['E']
-    allowToSaveInDB_I = ['I']
-    allowToSaveInDB = allowToSaveInDB_E + allowToSaveInDB_I
 
-    if ind in allowToPrint or (config.LOGS_IN_DB and ind in allowToSaveInDB):
-        localTime = datetime.datetime.today()
-        if config.LOGS_IN_DB and ind in allowToSaveInDB_E:
-            timeStr = localTime.strftime("%m/%d/%Y %H:%M:%S")
-            config.LOGS_ARR_E.append((timeStr,config.LOGS_DB_TIME_STEMP, ind, str(msg)))
-        elif config.LOGS_IN_DB and ind in allowToSaveInDB_I:
-            timeStr = localTime.strftime("%m/%d/%Y %H:%M:%S")
-            config.LOGS_ARR_I.append((timeStr,config.LOGS_DB_TIME_STEMP, ind, str(msg)))
-        if config.LOGS_PRINT and ind in allowToPrint:
-            timeStr = localTime.strftime("%d/%m/%Y %H:%M:%S")
-            if 'III' in ind:
-                logg.debug("\r %s %s" %(indPrint[ind], msg))
-            elif 'II' in ind:
-                logg.debug("%s %s" %(indPrint[ind], msg))
-            elif 'I' in ind:
-                logg.info("%s %s" %(indPrint[ind], msg))
-            else:
-                logg.error(str(indPrint[ind]) + str(msg))
+    if 'III' in ind:
+        logg.debug("\r %s %s" %(indPrint[ind], msg))
+    elif 'II' in ind:
+        logg.debug("%s %s" %(indPrint[ind], msg))
+    elif 'I' in ind:
+        logg.info("%s %s" %(indPrint[ind], msg))
+    else:
+        logg.error(str(indPrint[ind]) + str(msg))
 
 def setQueryWithParams(query):
     qRet = ""
@@ -98,18 +53,14 @@ def setQueryWithParams(query):
                 #q = str(q, 'utf-8')
                 for param in config.QUERY_PARAMS:
                     q = replaceStr(sString=q, findStr=param, repStr=config.QUERY_PARAMS[param], ignoreCase=True, addQuotes="'")
-                    #if param in q:
-                    #    q = q.replace(param, config.QUERY_PARAMS[param])
-                    p("glob->setQueryWithParams: replace param %s with value %s" % (str(param), str(config.QUERY_PARAMS[param])), "ii")
                 qRet += q
         else:
             #query= str (query, 'utf-8')
-
             for param in config.QUERY_PARAMS:
                 if param in query:
                     query = replaceStr(sString=query, findStr=param, repStr=config.QUERY_PARAMS[param], ignoreCase=True,addQuotes="'")
-                    p("glob->setQueryWithParams: replace param %s with value %s ..." % (str(param), str(config.QUERY_PARAMS[param])), "ii")
             qRet += query
+        p("glob->setQueryWithParams: replace params: %s " % (str(config.QUERY_PARAMS)), "ii")
     else:
         qRet = query
     return qRet
@@ -252,17 +203,6 @@ class validation (object):
             raise ValueError("Value must be True or False !")
 
     @property
-    def LOGS_IN_DB(self):
-        return config.LOGS_IN_DB
-
-    @LOGS_IN_DB.setter
-    def LOGS_IN_DB(self, val):
-        if val == True or val == False:
-            config.LOGS_IN_DB = val
-        else:
-            raise ValueError("Value must be True or False !")
-
-    @property
     def FILES_NOT_INCLUDE(self):
         return config.FILES_NOT_INCLUDE
 
@@ -290,6 +230,7 @@ class validation (object):
             err = "param must be dictionary: %s" %(str(val))
             raise ValueError(err)
 
+    # Logs properties
     @property
     def LOGS_DEBUG(self):
         return config.LOGS_DEBUG
@@ -305,7 +246,7 @@ class validation (object):
 
         if val in (CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET):
             config.LOGS_DEBUG = val
-            logg = getLogger(LOGS_DEBUG=val)
+            logger.setLogLevel( logLevel=config.LOGS_DEBUG )
         else:
             err = "Logging is not valid, valid values: 0,10,20,30,40,50"
             raise ValueError(err)
@@ -316,6 +257,7 @@ class validation (object):
     @LOGS_DIR.setter
     def LOGS_DIR(self, val):
         config.LOGS_DIR=val
+        logger.setLogDir(logDir=config.LOGS_DIR)
 
     @property
     def LOGS_INFO_NAME(self):
@@ -333,3 +275,38 @@ class validation (object):
     def LOGS_ERR_NAME(self, val):
         config.LOGS_ERR_NAME = val
 
+    ####  SMTP Properties
+    @property
+    def SMTP_SERVER(self):
+        return config.SMTP_SERVER
+    @SMTP_SERVER.setter
+    def SMTP_SERVER(self, val):
+        config.SMTP_SERVER = val
+
+    @property
+    def SMTP_SERVER_USER(self):
+        return config.SMTP_SERVER_USER
+    @SMTP_SERVER_USER.setter
+    def SMTP_SERVER_USER(self, val):
+        config.SMTP_SERVER_USER = val
+
+    @property
+    def SMTP_SERVER_PASS(self):
+        return config.SMTP_SERVER_PASS
+    @SMTP_SERVER_PASS.setter
+    def SMTP_SERVER_PASS(self, val):
+        config.SMTP_SERVER_PASS = val
+
+    @property
+    def SMTP_SENDER(self):
+        return config.SMTP_SENDER
+    @SMTP_SENDER.setter
+    def SMTP_SENDER(self, val):
+        config.SMTP_SENDER = val
+
+    @property
+    def SMTP_RECEIVERS(self):
+        return config.SMTP_RECEIVERS
+    @SMTP_RECEIVERS.setter
+    def SMTP_RECEIVERS(self, val):
+        config.SMTP_RECEIVERS = val
