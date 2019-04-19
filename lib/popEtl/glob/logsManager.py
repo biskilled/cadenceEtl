@@ -143,7 +143,7 @@ class manageTime (object):
         tsStr = time.strftime(self.timeFormat, time.localtime(ts))
         tCntFromStart = str(round ( ((ts - self.startTime) / 60) , 2))
         tCntFromLaststep = str(round ( ((ts - self.lastTime) / 60) , 2))
-
+        self.lastTime = ts
         self.stateDic[self.stateCnt] = {self.eDic.desc:sDesc,
                                         self.eDic.ts:tsStr,
                                         self.eDic.tCntLast:tCntFromLaststep,
