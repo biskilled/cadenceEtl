@@ -96,12 +96,12 @@ class config:
     PARSER_SQL_MAIN_KEY = "popEtl"
     PARSER_FILE_ENCODE  = "windows-1255"
 
-    #LOGS NEW
+    #LOGGING Properties
     LOGS_DEBUG = logging.DEBUG
     LOGS_DIR   = None
     LOGS_INFO_NAME = 'log'
     LOGS_ERR_NAME  = 'log'
-    LOGS_LOGGER    = None
+    LOGS_TMP_NAME  = 'lastLog'
 
     #SMTP Configuration
     SMTP_SERVER             = ""
@@ -110,19 +110,5 @@ class config:
     SMTP_SENDER             = ""
     SMTP_RECEIVERS          = ['info@biSkilled.com']
 
-
-    LOGS_DB_TBL = {"AAA_LOG_ERR":{"d":"startDate","f":["updateDate","startDate","logType","dDesc"],"t":"error","days":10},
-                   "AAA_LOG_INFO": {"d": "startDate", "f": ["updateDate","startDate","logType","dDesc"],"t":"info", "days":10}
-                   }
-
-    LOGS_TBL_COUNT = "AAA_TBL_INFO"
-
-    MSG_SEND_TABLE = {1:"Total loading in minutes ",
-                      2:"Total minutes for all queryies ",
-                      3:"Total minutes for all OLAP objects ",
-                      'err':"ERRORS",
-                      'inf':"INFO  ",
-                      "subj":"Loading JOB %s ",
-                      "subjERR":"ERROR : %s "}
 
 ###################################################################################################################################

@@ -257,7 +257,11 @@ class validation (object):
     @LOGS_DIR.setter
     def LOGS_DIR(self, val):
         config.LOGS_DIR=val
-        logger.setLogDir(logDir=config.LOGS_DIR)
+        logger.setLogDir(logDir=config.LOGS_DIR , logFile=config.LOGS_INFO_NAME,logErrFile=config.LOGS_ERR_NAME,logTmpFile=config.LOGS_TMP_NAME)
+        if config.LOGS_TMP_NAME:
+            tmpFileName = "%s.err"%(config.LOGS_TMP_NAME) if ".err" not in config.LOGS_TMP_NAME.lower() else config.LOGS_TMP_NAME
+            tmpFile = os.path.join(config.LOGS_DIR,tmpFileName)
+            open(tmpFile, 'w').close()
 
     @property
     def LOGS_INFO_NAME(self):

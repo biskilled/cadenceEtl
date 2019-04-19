@@ -247,12 +247,10 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess
         inc             = getDicKey(ePopEtlProp.inc,keys)
         execSql         = getDicKey(ePopEtlProp.exe,keys)
 
-
         sttDic          = jMap[stt]  if stt and len (jMap[stt])>0 else None
         mergeConn       = jMap[mergeConn]  if mergeConn and len (jMap[mergeConn])>0 else None
 
         if queryConn:
-            p("loader->_extractNodes: Found %s and %s, will use %s as source data " % (ePopEtlProp.src, ePopEtlProp.qry, ePopEtlProp.qry), "i")
             srcObj = connector(connJsonVal=jMap[queryConn], extraConnVal=jFileName, isSource=True, isSql=True)
         if sourceConn:
             if srcObj is not None:

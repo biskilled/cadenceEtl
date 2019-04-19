@@ -133,12 +133,16 @@ class cnDb (object):
 
     def close(self):
         try:
-            if self.cursor: self.cursor.close()
-            if self.conn:   self.conn.close()
+            if self.cursor:
+                self.cursor.close()
+            if self.conn:
+                self.conn.close()
+            self.conn   = None
+            self.cursor = None
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            p("sb->close: Exception :"+str(exc_type)+" file name:"+str(fname)+" line: "+str(exc_tb.tb_lineno)+" massage: "+str(exc_obj.message), "e")
+            p("db->close: Exception :"+str(exc_type)+" file name:"+str(fname)+" line: "+str(exc_tb.tb_lineno)+" massage: "+str(exc_obj.message), "i")
 
     def create(self, stt=None,  seq=None, tblName=None):
         tblName = tblName if tblName else "[" + self.cSchema + "].[" + self.cObj+"]" if self.cSchema else "["+self.cObj+"]"

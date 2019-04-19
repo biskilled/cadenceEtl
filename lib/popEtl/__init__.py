@@ -25,5 +25,5 @@ from popEtl.glob.glob import validation             as __validation
 from popEtl.glob.globalDBFunctions import OLAP_Process as OLAP
 
 CONFIG = __validation()
-MANGE_LOGS = manageTime(loggObj=__logger, timeFormat="%m/%d/%Y %H:%M:%S", sDesc="state_",  toSendErrors=True)
+MANGE_LOGS = manageTime(loggObj=__logger, timeFormat="%m/%d/%Y %H:%M:%S", sDesc="state_")
 

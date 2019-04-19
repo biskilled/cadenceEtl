@@ -26,85 +26,90 @@ class ListHandler(logging.Handler):  # Inherit from logging.Handler
         return self.log_list
 
 class myLogger (object):
-    def __init__ (self, logStdout=True, logDir=None, logFile='log',logErrFile="log",
-                  loggLevel=logging.DEBUG, logFormat='%(asctime)s %(levelname)s %(message)s'):
+    def __init__ (self, logStdout=True, loggLevel=logging.DEBUG, logFormat='%(asctime)s %(levelname)s %(message)s'):
+        # logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
+        self.logFormatter   = logging.Formatter(logFormat)
+        self.logLevel       = loggLevel
+        self.isLogsFilesInit= False
+        self.logTmpFile     = None
 
-        currentDate     = time.strftime('%Y%m%d')
-        self.logDir     = logDir
-        self.logFile    = "%s_%s.log"%(logFile,currentDate)    if logFile and ".log" not in logFile.lower() else logFile
-        self.logErrFile = "%s_%s.err"%(logErrFile,currentDate) if logErrFile and ".err" not in logErrFile.lower() else logErrFile
+        self.logg           = logging.getLogger()
+        self.logg.setLevel(self.logLevel)
 
-        self.logLevel   = loggLevel
-        self.logStdout  = logStdout
-        self.isLogsFilesInit = False
-
-        #logging.basicConfig(format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
-        self.logFormatter= logging.Formatter(logFormat)
-        self.logg   = logging.getLogger()
-
-        # tmp errors logs into currentLogFile
-
-        self.listH = ListHandler()
-        self.listH.setFormatter(self.logFormatter)
-        self.listH.setLevel(logging.ERROR)
-        self.logg.addHandler(self.listH)
-
-        if self.logDir and self.logFile and not self.isLogsFilesInit:
-            self.isLogsFilesInit = True
-            self.__setLogsFiles()
-
-        if self.logStdout:
+        if logStdout:
             consoleHandler = logging.StreamHandler(sys.stdout)
             consoleHandler.setFormatter(self.logFormatter)
             self.logg.addHandler(consoleHandler)
 
-        self.logg.setLevel( self.logLevel )
+    def setLogsFiles (self, logDir=None, logFile='log',
+                      logErrFile="log",logTmpFile='lastLog'):
+
+        self.logDir = logDir if logDir else config.LOGS_DIR
+        currentDate = time.strftime('%Y%m%d')
+        logFile = logFile if logFile else config.LOGS_INFO_NAME
+        logFile = "%s_%s.log"%(logFile, currentDate) if logFile and ".log" not in logFile.lower() else logFile
+
+        logErrFile = logErrFile if logErrFile else config.LOGS_ERR_NAME
+        logErrFile = "%s_%s.err" % (logErrFile, currentDate) if logErrFile and ".err" not in logErrFile.lower() else logErrFile
+
+        logTmpFile = logTmpFile if logTmpFile else config.LOGS_TMP_NAME
+        logTmpFile = "%s.err" % (logTmpFile) if logTmpFile and ".err" not in logTmpFile.lower() else logTmpFile
+
+        if not os.path.isdir(self.logDir):
+            err = "%s if not a correct directory " % self.logDir
+            raise ValueError(err)
+
+        if logTmpFile:
+            self.logTmpFile = os.path.join(self.logDir, logTmpFile)
+            tmpFileErrors   = logging.FileHandler(self.logTmpFile, mode='a')
+            tmpFileErrors.setFormatter(self.logFormatter)
+            tmpFileErrors.setLevel(logging.ERROR)
+            self.logg.addHandler(tmpFileErrors)
+
+        if not logErrFile:
+            fileHandler = logging.FileHandler(os.path.join(self.logDir, logFile), mode='a')
+            fileHandler.setFormatter(self.logFormatter)
+            self.logg.addHandler(fileHandler)
+        else:
+            # log file info
+            fileHandlerInfo = logging.FileHandler(os.path.join(self.logDir, logFile), mode='a')
+            fileHandlerInfo.setFormatter(self.logFormatter)
+            fileHandlerInfo.setLevel(self.logLevel)
+            self.logg.addHandler(fileHandlerInfo)
+
+            # Err file info
+            fileHandlerErr = logging.FileHandler(os.path.join(self.logDir, logErrFile), mode='a')
+            fileHandlerErr.setFormatter(self.logFormatter)
+            fileHandlerErr.setLevel(logging.ERROR)
+            self.logg.addHandler(fileHandlerErr)
 
     def getLogger (self):
         return self.logg
-
-    def gerListErr (self):
-        if self.listH:
-            return self.listH.log_list
 
     def getLogsDir (self):
         return self.logDir
 
     def setLogLevel (self, logLevel):
         self.logLevel = logLevel
-        if not self.isLogsFilesInit:
-            self.isLogsFilesInit = True
-            self.__setLogsFiles()
+        self.logg.setLevel(self.logLevel)
 
-    def setLogDir (self, logDir):
+    def setLogDir (self, logDir, logFile='log',logErrFile="log",logTmpFile='lastLog'):
         if os.path.isdir(logDir):
             self.logDir = logDir
-
+            self.setLogsFiles (logDir=logDir, logFile=logFile,
+                      logErrFile=logErrFile,logTmpFile=logTmpFile)
         else:
             err = "Logs dir: %s NOT VALID !" %(logDir)
             raise ValueError(err)
 
-    def __setLogsFiles(self):
-        if not os.path.isdir(self.logDir):
-            err = "%s if not a correct directory " % self.logDir
-            raise ValueError(err)
-
-        if not self.logErrFile:
-            fileHandler = logging.FileHandler(os.path.join(self.logDir, self.logFile))
-            fileHandler.setFormatter(self.logFormatter)
-            self.logg.addHandler(fileHandler)
-        else:
-            # log file info
-            fileHandlerInfo = logging.FileHandler(os.path.join(self.logDir, self.logFile), mode='a')
-            fileHandlerInfo.setFormatter(self.logFormatter)
-            fileHandlerInfo.setLevel(self.logLevel)
-            self.logg.addHandler(fileHandlerInfo)
-
-            # Err file info
-            fileHandlerErr = logging.FileHandler(os.path.join(self.logDir, self.logErrFile), mode='a')
-            fileHandlerErr.setFormatter(self.logFormatter)
-            fileHandlerErr.setLevel(logging.ERROR)
-            self.logg.addHandler(fileHandlerErr)
+    def getLogTemp (self):
+        lines = None
+        if self.logDir and self.logTmpFile:
+            fileLoc = os.path.join (self.logDir,self.logTmpFile)
+            if fileLoc and os.path.isfile(fileLoc):
+                with open (fileLoc) as f:
+                    lines = f.read().splitlines()
+        return lines
 
 class manageTime (object):
     class eDic (object):
@@ -112,13 +117,19 @@ class manageTime (object):
         ts   = "timestamp"
         tCnt = "totaltime"
 
-    def __init__ (self, loggObj, timeFormat="%m/%d/%Y %H:%M:%S", sDesc="state_",  toSendErrors=True):
-        self.startTime= time.time()
+    def __init__ (self, loggObj, timeFormat="%m/%d/%Y %H:%M:%S", sDesc="state_" ):
+        self.startTime = time.time()
         self.stateDic = OrderedDict()
-        self.stateCnt = 0
-        self.sDesc    = sDesc
         self.loggObj  = loggObj
         self.timeFormat = timeFormat
+        self.stateCnt = 0
+        self.sDesc    = sDesc
+
+    def start (self,days=None):
+        self.startTime = time.time()
+
+        if days:
+            self.deleteOldLogFiles(days=days)
 
     def addState (self, sDesc=None):
         self.stateCnt+=1
@@ -146,7 +157,7 @@ class manageTime (object):
         okMsg = "Loading JOB %s " %(msgName)
         errMsg= "ERROR loading Job %s " %(msgName)
         endMsg= "Total Execution job "
-        errList = self.loggObj.gerListErr ()
+        errList = self.loggObj.getLogTemp ()
         errCnt  = len(errList) if errList else 0
 
         htmlList = []
@@ -213,5 +224,4 @@ class manageTime (object):
             err = "gFunc->sendMsg: unable to send email to %s, subject is: %s " % (str(receivers), str(msgSubj))
             raise ValueError(err)
 
-logger = myLogger(logStdout=True, logDir=config.LOGS_DIR, logFile=config.LOGS_INFO_NAME,
-                   logErrFile=config.LOGS_ERR_NAME,loggLevel=config.LOGS_DEBUG)
+logger = myLogger(logStdout=True,loggLevel=config.LOGS_DEBUG)
