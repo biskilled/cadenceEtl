@@ -115,19 +115,23 @@ class manageTime (object):
     class eDic (object):
         desc = "desc"
         ts   = "timestamp"
+        tCntLast = "totalFromLastStep"
         tCnt = "totaltime"
 
     def __init__ (self, loggObj, timeFormat="%m/%d/%Y %H:%M:%S", sDesc="state_" ):
         self.startTime = time.time()
+        self.lastTime  = self.startTime
         self.stateDic = OrderedDict()
         self.loggObj  = loggObj
         self.timeFormat = timeFormat
         self.stateCnt = 0
         self.sDesc    = sDesc
 
-    def start (self,days=None):
+    def start (self,desc=None,days=None):
         self.startTime = time.time()
-
+        self.lastTime = self.startTime
+        if desc:
+            self.addState(sDesc=desc)
         if days:
             self.deleteOldLogFiles(days=days)
 
@@ -137,8 +141,13 @@ class manageTime (object):
             sDesc="%s%s" %(str(self.sDesc),str(self.stateCnt))
         ts = time.time()
         tsStr = time.strftime(self.timeFormat, time.localtime(ts))
-        tCnt = str(round ( ((ts - self.startTime) / 60) , 2))
-        self.stateDic[self.stateCnt] = {self.eDic.desc:sDesc, self.eDic.ts:tsStr,self.eDic.tCnt:tCnt }
+        tCntFromStart = str(round ( ((ts - self.startTime) / 60) , 2))
+        tCntFromLaststep = str(round ( ((ts - self.lastTime) / 60) , 2))
+
+        self.stateDic[self.stateCnt] = {self.eDic.desc:sDesc,
+                                        self.eDic.ts:tsStr,
+                                        self.eDic.tCntLast:tCntFromLaststep,
+                                        self.eDic.tCnt:tCntFromStart }
 
     def deleteOldLogFiles (self, days=5 ):
         logsDir = self.loggObj.getLogsDir()
@@ -167,11 +176,14 @@ class manageTime (object):
             # First table - general knowledge
             self.addState(sDesc=endMsg)
 
-            dicFirstTable = {eHtml.HEADER:['Step Num','Start Time','Desc','Total Time'],
+            dicFirstTable = {eHtml.HEADER:['Step Num','Start Time','Desc','Exec Time', 'Total Time'],
                              eHtml.ROWS:[]}
 
             for st in self.stateDic:
-                dicFirstTable[eHtml.ROWS].append ( [st, self.stateDic[st][self.eDic.ts], self.stateDic[st][self.eDic.desc], self.stateDic[st][self.eDic.tCnt] ] )
+                dicFirstTable[eHtml.ROWS].append ( [st, self.stateDic[st][self.eDic.ts],
+                                                    self.stateDic[st][self.eDic.desc],
+                                                    self.stateDic[st][self.eDic.tCntLast],
+                                                    self.stateDic[st][self.eDic.tCnt] ] )
 
             htmlList.append (dicFirstTable)
             if withErr:
