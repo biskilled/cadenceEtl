@@ -10,7 +10,6 @@ from email.mime.text import MIMEText
 from popEtl.glob.genHtml import eHtml, createHtmlFromList
 from popEtl.config import config
 
-
 class ListHandler(logging.Handler):  # Inherit from logging.Handler
     def __init__(self):
         # run the regular Handler __init__
@@ -123,6 +122,7 @@ class manageTime (object):
         self.lastTime  = self.startTime
         self.stateDic = OrderedDict()
         self.loggObj  = loggObj
+        self.logg  = self.loggObj.getLogger()
         self.timeFormat = timeFormat
         self.stateCnt = 0
         self.sDesc    = sDesc
@@ -160,7 +160,8 @@ class manageTime (object):
                 if os.path.isfile(path):
                     stat = os.stat(path)
                     if stat.st_ctime < old:
-                        self.loggObj.info("Delete File %s" %(path))
+                        self.logg.info("Delete File %s" %(path))
+                        os.remove(path)
 
     def sendSMTPmsg (self, msgName, onlyOnErr=False, withErr=True):
         okMsg = "Loading JOB %s " %(msgName)

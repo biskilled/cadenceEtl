@@ -263,6 +263,9 @@ class validation (object):
             tmpFile = os.path.join(config.LOGS_DIR,tmpFileName)
             open(tmpFile, 'w').close()
 
+    def SET_DEFAULT_LOGS(self, val):
+        self.LOGS_DIR = os.path.join (val,"logs\\")
+
     @property
     def LOGS_INFO_NAME(self):
         return config.LOGS_INFO_NAME

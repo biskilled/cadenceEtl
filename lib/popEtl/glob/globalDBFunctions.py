@@ -109,10 +109,9 @@ def sendMsg(subj,text=None, mHTML=None):
 
 def OLAP_Process(serverName,dbName, cubes=[], dims=[], fullProcess=True):
     import sys, os
-    print (sys.path)
-    sys.path.append(os.path.abspath(r'../../3rdPart/clrmodule.dll'))
+    sys.path.append(os.path.join (sys.path[1],"popEtl/dll/clrmodule.dll" )) # abspath(r'../3rdPart/clrmodule.dll'))
     import clr
-    clr.AddReference(os.path.abspath(r"../../3rdPart/Microsoft.AnalysisServices.DLL"))
+    clr.AddReference(os.path.join(sys.path[1],"popEtl/dll/Microsoft.AnalysisServices.DLL" )) # r"../3rdPart/Microsoft.AnalysisServices.DLL"
 
     from Microsoft.AnalysisServices import Server
     from Microsoft.AnalysisServices import ProcessType
