@@ -154,12 +154,11 @@ class manageTime (object):
         if logsDir:
             now = time.time()
             old = now - (days * 24 * 60 * 60)
-
             for f in os.listdir(logsDir):
                 path = os.path.join(logsDir, f)
                 if os.path.isfile(path):
                     stat = os.stat(path)
-                    if stat.st_ctime < old:
+                    if stat.st_mtime < old:
                         self.logg.info("Delete File %s" %(path))
                         os.remove(path)
 
