@@ -90,7 +90,7 @@ def _appendPartitions (srcObj, partition):
 def _execTarget (dstObj):
     if dstObj.cFilter:
         dstObj.connect()
-        sql = "Delete From " + dstObj.cName + " Where " + dstObj.cFilter
+        sql = "Delete From " + dstObj.cObj + " Where " + dstObj.cFilter
         sql = setQueryWithParams(sql)
         p("loader->_execTarget: Destination %s have delete query %s, deleting target " % (dstObj.cName, sql), "ii")
         dstObj.execSP(sqlQuery=sql)
