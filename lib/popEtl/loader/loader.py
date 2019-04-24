@@ -200,7 +200,7 @@ def _execLoading ( params ):
         dstObj.connect()
 
         # Check if source is same as target connection (only for merge option)
-        if srcObj.cType==srcObj.cType  and srcObj.cObj ==  dstObj.cObj:
+        if srcObj.cType==srcObj.cType  and srcObj.cObj ==  dstObj.cObj and srcObj.cUrl ==  dstObj.cUrl:
             p('loader->execLoading: TYPE: %s, SOURCE and TARGET %s object are identical.. will check if there is merge >>>>>' % (str(srcDict[eConnValues.connType]), str(srcDict[eConnValues.connObj])), "ii")
 
         else:
@@ -248,6 +248,7 @@ def _extractNodes (jText,jFileName,sourceList=None, destList=None, singleProcess
         execSql         = getDicKey(ePopEtlProp.exe,keys)
 
         sttDic          = jMap[stt]  if stt and len (jMap[stt])>0 else None
+        targetMapping   = jMap[targetMapping]  if targetMapping and len (jMap[targetMapping])>0 else None
         mergeConn       = jMap[mergeConn]  if mergeConn and len (jMap[mergeConn])>0 else None
 
         if queryConn:

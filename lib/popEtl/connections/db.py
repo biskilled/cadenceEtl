@@ -25,7 +25,7 @@ import multiprocessing.pool as mpool
 from collections import OrderedDict
 
 from popEtl.config import config
-from popEtl.glob.glob import p, setQueryWithParams, decodeStrPython2Or3
+from popEtl.glob.glob import p, setQueryWithParams, decodeStrPython2Or3, functionResultMapping
 from popEtl.glob.loaderFunctions import *
 from popEtl.glob.enums import eDbType, eConnValues, isDbType
 import popEtl.connections.dbQueries as queries
@@ -130,7 +130,6 @@ class cnDb (object):
             err = "Error connecting into DB: %s, ERROR: %s " %(self.cType, str(e))
             raise ValueError(err)
 
-
     def close(self):
         try:
             if self.cursor:
@@ -185,11 +184,11 @@ class cnDb (object):
             self.structure (stt=None)
         return self.cColumns
 
-    def structure (self, stt, tableName=None, addSourceColumn=False, sqlQuery=None):
+    def structure (self, stt=None, tableName=None, addSourceColumn=False, sqlQuery=None):
         tableStructure  = []
         # If there is query and there is internal maaping in query - will add this mapping to mappingColum dictionary
         if self.cIsSql:
-            stt = self.__sqlQueryMapping (stt=stt, addSourceColumn=addSourceColumn, sqlQuery=sqlQuery)
+            stt = self.__sqlQueryMapping(stt=stt, addSourceColumn=addSourceColumn, sqlQuery=sqlQuery)
             for t in stt:
                 if "s" in  stt[t] and "t" in stt[t]:
                     tableStructure.append ( (stt[t]["s"] , stt[t]["t"]) )
@@ -207,7 +206,6 @@ class cnDb (object):
                             tmpList = sttSource[stt[t]["s"]] if isinstance(sttSource[stt[t]["s"]], list) else sttSource[stt[t]["s"]].split()
                             tmpList.append ( t )
                             sttSource[stt[t]["s"]] = tmpList
-
 
             tableName = tableName if tableName else self.cObj
             if self.cType in ('access'):
@@ -246,7 +244,6 @@ class cnDb (object):
                 for t in stt:
                     if t not in sttTemp: sttTemp[t] = stt[t]
 
-
             if len(sttTemp)>0: stt = sttTemp
 
         self.cColumns = tableStructure
@@ -256,6 +253,7 @@ class cnDb (object):
         if self.cIsSql:
             p("db->loadData: Object is query... connot load data, %s " %(self.cObj))
             return
+        errorIntoSql = "Select %s into "+self.cObj
 
         if results and numOfRows>0:
             tarSQL = "INSERT INTO " + self.cObj + " "
@@ -268,15 +266,18 @@ class cnDb (object):
                 tarSQL += "VALUES (" + ",".join(["?" for x in range(cntColumn)]) + ")"
 
             try:
-                self.cursor.executemany(tarSQL, results)
-                self.conn.commit()
-                p('db->loadData: Load %s into target: %s >>>>>> ' % (str(numOfRows), self.cObj), "ii")
+                if tarSQL and len (tarSQL)>0 and results and len(results)>0:
+                    self.cursor.executemany(tarSQL, results)
+                    self.conn.commit()
+                    p('db->loadData: Load %s into target: %s >>>>>> ' % (str(numOfRows), self.cObj), "ii")
+                else:
+                    p('db->loadData: There is no data.  >>>>>> ' , "i")
             except Exception as e:
                 p("db->loadData: type: %s, name: %s ERROR in cursor.executemany !!!!" % (self.cType, str(self.cObj)), "e")
                 p("db->loadData: ERROR, target query: %s " % str(tarSQL), "e")
-                p("db->loadData: ERROR, sample result: %s " % str(results[0]), "e")
+                sampleRes = ['Null' if not r else "'%s'" %r for r in results[0]]
+                p("db->loadData: ERROR, sample result: %s " % str(", ".join (sampleRes)), "e")
                 p(e, "e")
-
                 if config.RESULT_LOOP_ON_ERROR:
                     iCnt = 0
                     tCnt = len (results)
@@ -366,7 +367,7 @@ class cnDb (object):
                     results = self.cursor.fetchmany(config.RESULT_ARRAY_SIZE)
                 else:
                     results = self.cursor.fetchall()
-                results = self.__functionResultMapping( results, fnDic)
+                results = functionResultMapping( results, fnDic)
             except Exception as e:
                 p("db->__parallelProcessing: type: %s, name: %s ERROR in cursor.fetchmany" %(self.cType, str(self.cObj)), "e")
                 p(str(e), "e")
@@ -393,26 +394,6 @@ class cnDb (object):
             p(e,'e')
             traceback.print_exc()
             raise e
-
-    def __functionResultMapping (self, results,fnDic):
-        if fnDic and len(fnDic) > 0 and results:
-            for cntRows, r in enumerate(results):
-                r = list(r)
-                for pos, fnList in fnDic.items():
-                    if not isinstance(pos, tuple):
-                        uColumn = r[pos]
-                        for f in fnList:
-                            uColumn = f.handler(uColumn)
-                        r[pos] = uColumn
-                    else:
-                        fnPos = fnList[0]
-                        fnStr = fnList[1]
-                        fnEval = fnList[2]
-                        newVal = [str(r[cr]).decode(config.FILE_DECODING) for cr in pos]
-                        newValStr = decodeStrPython2Or3 (sObj=fnStr, un=True).format(*newVal)
-                        r[fnPos] = eval(newValStr) if fnEval else newValStr
-                results[cntRows] = r
-        return results
 
     def minValues (self, colToFilter, resolution=None, periods=None, startDate=None):
         # there is min value to
@@ -489,9 +470,12 @@ class cnDb (object):
 
                 if not schemaEqual:
                     srcPost = config.DATA_TYPE['colFrame'][self.cType][1]
+                    exist = set(existStrucute) - set(colList)
+                    newCol= set(colList) - set(existStrucute)
                     p("db-> __cloneObject: UPDATE TABLE OLD STRUCTURE : %s " % str(existStrucute))
                     p("db-> __cloneObject: OLD STRUCTURE : %s " %str(existStrucute))
                     p("db-> __cloneObject: NEW STRUCTURE : %s " % str(colList))
+                    p("db-> __cloneObject: EXISTS COL: %s, NEW COL: %s "  %(str(exist),str(newCol)))
 
                     if tblName[-1]=="]":
                         oldName = "%s_%s]" %(tblName[:-1], str(time.strftime('%y%m%d')))
@@ -571,6 +555,10 @@ class cnDb (object):
             if set (self.cColumns) == set (tableStructure):
                 p('db-> __schemaCompare: table %s has no change >>>' %(self.cType), "ii")
                 return True
+            else:
+                res = set(self.cColumns)-set (tableStructure)
+                res2= set (tableStructure)-set(self.cColumns)
+                p("db-> __schemaCompare: Diffrence %s and %s " %(str(res)),str(res2), "ii")
         p ('db-> __schemaCompare: table %s structure changed, old: %s, new: %s >>>>' %(self.cObj, str(self.cColumns), str(colList) ), "ii")
         return False
 

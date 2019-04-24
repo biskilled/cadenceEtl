@@ -53,6 +53,7 @@ class connector ():
             self.cObj       = self.objClass.cObj
             self.cColumns   = self.objClass.cColumns
             self.cFilter    = self.objClass.cFilter
+            self.cUrl       = self.objClass.cUrl
         else:
             p ("CONNECTOR->init: %s is Not valid connection .... quiting ...." %(str(connDic)) ,"e")
             return

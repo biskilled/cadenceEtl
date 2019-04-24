@@ -135,6 +135,38 @@ def filterFiles (modelToExec, dirData=None, includeFiles=None, notIncludeFiles=N
 
     return jsonFiles
 
+def functionResultMapping (results,fnDic, header=None):
+    if fnDic and len(fnDic)>0 and results:
+        for cntRows, r in enumerate(results):
+            r = list(r)
+            if header:
+                r = [r[c].strip() if str(c).isdigit() and len(r[c]) > 0 else None for c in header]
+
+            lenRow = len (r)-1
+            for pos, fnList in fnDic.items():
+                if not isinstance(pos, tuple):
+                    uColumn = r[pos] if pos<=lenRow else None
+                    for f in fnList:
+                        uColumn = f.handler(uColumn, pos)
+
+                    if pos>lenRow:
+                        r.append (uColumn)
+                    else:
+                        r[pos] = uColumn
+                else:
+                    fnPos  = fnList[0]
+                    fnStr  = fnList[1]
+                    fnEval = fnList[2]
+                    newVal = [str(r[cr]).decode(config.FILE_DECODING) for cr in pos]
+                    newValStr = decodeStrPython2Or3 (sObj=fnStr, un=True).format(*newVal)
+                    res = eval(newValStr) if fnEval else newValStr
+                    if fnPos>lenRow:
+                        r.append ( res )
+                    else:
+                        r[fnPos] = res
+            results[cntRows] = r
+    return results
+
 class validation (object):
     def __init__ (self):
         pass

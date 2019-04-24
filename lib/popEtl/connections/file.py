@@ -20,16 +20,16 @@ __metaclass__ = type
 
 import collections
 import os
+import sys
 import shutil
 import time
-import csv
 import io
+import traceback
 import codecs
-import pandas as pd
 from collections import OrderedDict
 
 from popEtl.config          import config
-from popEtl.glob.glob       import p
+from popEtl.glob.glob       import p, decodeStrPython2Or3, functionResultMapping
 from popEtl.glob.enums      import eConnValues, eDbType
 
 
@@ -43,18 +43,18 @@ class cnFile ():
         self.conn       = None
         self.cColumns   = None
         self.cFilter    = None
-
         self.fileHeader = fileHeader
 
-        if isinstance(self.cUrl, (dict, OrderedDict)):
-            connProp = [x.lower() for x in self.cUrl.keys()]
-            self.fileDelimiter  = self.cUrl[eConnValues.fileDelimiter] if eConnValues.fileDelimiter in connProp else config.FILE_DEFAULT_DELIMITER
-            self.fileHeader     = self.cUrl[eConnValues.fileHeader] if eConnValues.fileHeader in connProp       else config.FILE_DEFAULT_HEADER
-            self.folderPath     = self.cUrl[eConnValues.fileFolder] if eConnValues.fileFolder in connProp       else config.FILE_DEFAULT_FOLDER
-            self.fullPath       = os.path.join(self.folderPath, self.cName)
-            self.newLine        = self.folderPath[eConnValues.fileNewLine]  if eConnValues.fileNewLine in connProp  else config.FILE_DEFAULT_NEWLINE
-            self.encoding       = self.folderPath[eConnValues.fileEncoding] if eConnValues.fileEncoding in connProp else config.FILE_DECODING
-            self.errors         = self.folderPath[eConnValues.fileErrors]   if eConnValues.fileErrors in connProp   else config.FILE_LOAD_WITH_CHAR_ERR
+        fileDicDef = self.cUrl if isinstance(self.cUrl, (dict, OrderedDict)) else {}
+        connProp = [x.lower() for x in self.cUrl.keys()]
+
+        self.fileDelimiter  = self.cUrl[eConnValues.fileDelimiter] if eConnValues.fileDelimiter in connProp else config.FILE_DEFAULT_DELIMITER
+        self.fileHeader     = self.cUrl[eConnValues.fileHeader] if eConnValues.fileHeader in connProp       else config.FILE_DEFAULT_HEADER
+        self.folderPath     = self.cUrl[eConnValues.fileFolder] if eConnValues.fileFolder in connProp       else config.FILE_DEFAULT_FOLDER
+        self.fullPath       = os.path.join(self.folderPath, self.cName)
+        self.newLine        = self.folderPath[eConnValues.fileNewLine]  if eConnValues.fileNewLine in connProp  else config.FILE_DEFAULT_NEWLINE
+        self.encoding       = self.folderPath[eConnValues.fileEncoding] if eConnValues.fileEncoding in connProp else config.FILE_DECODING
+        self.errors         = self.folderPath[eConnValues.fileErrors]   if eConnValues.fileErrors in connProp   else config.FILE_LOAD_WITH_CHAR_ERR
 
         head, tail = os.path.split (self.cObj)
         if head and len(head)>1 and tail and len (tail)>1:
@@ -68,53 +68,12 @@ class cnFile ():
         if fileName:
             self.fullPath = fileName
             return True
-        else:
-            err = "File path is not correct ! " %(self.fullPath)
+        elif not self.fullPath:
+            err = u"File path is valid: %s " %(decodeStrPython2Or3(self.fullPath))
             raise ValueError(err)
 
     def close (self):
         pass
-
-    def truncate(self, tbl=None):
-        if os.path.isfile(self.fullPath):
-            os.remove(self.fullPath)
-            p("file->truncate: %s is deleted " %(self.fullPath))
-        else:
-            p("file->truncate: %s is not exists " % (self.fullPath))
-
-    def getColumnsTypes (self):
-        if self.cColumns and len(self.cColumns)>0:
-            return self.cColumns
-        else:
-            self.structure (stt=None)
-        return self.cColumns
-
-    def setColumns(self, colList):
-        columnsList = []
-        ret = []
-        # check if column object is ordered dictionay
-        if len (colList) == 1 and isinstance( colList[0] , collections.OrderedDict ):
-            columnsList = colList[0].items()
-        else:
-            if isinstance( colList, list) and len (colList)>0:
-                columnsList = colList
-            else:
-                if isinstance( colList, (dict, collections.OrderedDict) ):
-                    columnsList = colList.items()
-                else:
-                    p ("file->setColumns: List of column is not ordered dictioany or list or regualr dictioanry ....","e")
-                    return None
-
-        for col in columnsList:
-            if (isinstance (col, (tuple, list))):
-                colName = col[0]
-            else:
-                colName = col
-            ret.append(colName)
-        self.columns = ret
-
-        p("file-> setColumns: type: %s, file %s will be set with column: %s" % (self.cType, self.cName, str(self.columns)), "ii")
-        return self.columns
 
     def create(self, colList, fullPath=None,  seq=None):
         fullPath = fullPath if fullPath else self.fullPath
@@ -129,6 +88,20 @@ class cnFile ():
 
         # create new File
         self.fileObj = open (fullPath, 'w')
+
+    def truncate(self, tbl=None):
+        if os.path.isfile(self.fullPath):
+            os.remove(self.fullPath)
+            p("file->truncate: %s is deleted " %(self.fullPath))
+        else:
+            p("file->truncate: %s is not exists " % (self.fullPath))
+
+    def getColumnsTypes (self):
+        if self.cColumns and len(self.cColumns)>0:
+            return self.cColumns
+        else:
+            self.structure (stt=None)
+        return self.cColumns
 
     def structure(self, stt ,addSourceColumn=False,tableName=None, sqlQuery=None):
         stt = collections.OrderedDict() if not stt else stt
@@ -204,67 +177,87 @@ class cnFile ():
         p('file->loadData: Load %s into target: %s >>>>>> ' % (str(numOfRows), self.fullPath), "ii")
         return
 
-    def _updateRow (self, row ):
-        def rep (s):
-            return s.replace('"','').replace ("\t","")
-        ret = row
-        ret = [rep(row[c]) if str(c).isdigit() and len(row[c])>0 else None for c in self.header]
-        if self.fnDic:
-            lenR = len (ret)
-            for pos, fnList in self.fnDic.items():
-                if not isinstance(pos, tuple):
-                    uColumn = ret[pos] if lenR<pos else None
-                    for f in fnList:
-                        uColumn = f.handler(uColumn)
-                    if lenR<=pos:
-                        ret.append(uColumn)
-                    else:
-                        ret[pos] = uColumn
-                else:
-                    fnPos = fnList[0]
-                    fnStr = fnList[1]
-                    fnEval = fnList[2]
-                    newVal = [str(ret[cr]).decode(config.FILE_DECODING) for cr in pos]
-                    newValStr = str(fnStr,'utf-8').format(*newVal)
-                    if lenR<=pos:
-                        ret.append( eval(newValStr) if fnEval else newValStr )
-                    else:
-                        ret[fnPos] = eval(newValStr) if fnEval else newValStr
-        return ret
+    def transferToTarget(self, dstObj, srcVsTar, fnDic, pp):
+        results     = []
+        header      = []
+        cntColumn   = 0
 
-    def dfToTable(self, df, ifExists='truncate', seq=None, index=False,chunksize=None):
-        p("file->dfToTable: tranfering to file %s from data frame  >>>" % self.fullPath, "ii")
+        srcNames = [st[0] for st in srcVsTar] if srcVsTar else []
+        tarNames = [st[1] for st in srcVsTar] if srcVsTar else []
+        srcVsTar = list ([])
 
-        if seq:
-            p ("file->dfToTable: FILE %s, Sequence is not activated in target file connection, seq: %s  ..." %(str(self.fullPath) , str (seq) ), "e")
+        try:
+            with io.open (self.fullPath, 'r', encoding='windows-1255', errors=self.errors) as fFile: # encoding='windows-1255' encoding='utf8'
+                for i, line in enumerate(fFile):
+                    line = line.replace('"', '').replace("\t", "")
+                    line = line.strip(config.FILE_DEFAULT_NEWLINE)
+                    split_line = line.split(self.fileDelimiter)
+                    # Add headers structure
+                    if i==0:
+                        split_line = [c.strip() for c in split_line]
+                        if self.fileHeader and len (srcNames)>0:
+                            for i, sCol in enumerate (srcNames):
+                                if sCol in split_line:
+                                    header.append (split_line.index(sCol))
+                                    srcVsTar.append ((sCol,tarNames[i],))
+                                elif sCol == "''":
+                                    header.append(sCol)
+                                    srcVsTar.append((sCol, tarNames[i],))
+                                else:
+                                    p ("file->transferToTarget: Loading %s, column %s mapped but not found in file headers, ignoring %s ..." %(str(self.fullPath), str(sCol), str(split_line)))
+                            continue
+                        else:
+                            for i, sCol in enumerate(split_line):
+                                colName = '%s%s' %(str(config.FILE_DEF_COLUMN_PREF),str(i))
+                                header.append(i)
+                                srcVsTar.append ( (i, colName ))
 
-        if ifExists=='truncate':
-            p("file->dfToTable: APPEND DATA  >>>" % self.fullPath, "ii")
-            with open(self.cName, 'a') as f:
-                df.to_csv(f , header=False, index=index, encoding=config.FILE_ENCODING, quoting=csv.QUOTE_NONNUMERIC,  quotechar = self.fileDelimiter)
+                        cntColumn = len (header)
+
+
+                    results.append(split_line)
+                    if config.FILE_MAX_LINES_PARSE>0 and i>0 and i%config.FILE_MAX_LINES_PARSE == 0:
+                        results = functionResultMapping( results, fnDic, header=header)
+                        dstObj.loadData(srcVsTar, results, i, cntColumn)
+                        results = list ([])
+
+                if len(results)>0 : #and split_line:
+                    results = functionResultMapping(results, fnDic, header=header)
+                    dstObj.loadData(srcVsTar, results, len(results), len(srcVsTar))
+                    #self.__checkColumn (srcVsTar, results, dstObj, maxRows=None,numOfCol=47)
+                    results = list ([])
+
+        except Exception as e:
+            p("file->transferToTarget: ERROR loading file: %s, type: %s >>>>>>" % (self.cName, self.cType) , "e")
+            p(traceback.format_exc(),"e")
+
+
+    def setColumns(self, colList):
+        columnsList = []
+        ret = []
+        # check if column object is ordered dictionay
+        if len (colList) == 1 and isinstance( colList[0] , collections.OrderedDict ):
+            columnsList = colList[0].items()
         else:
-            p("file->dfToTable: TRUNCATE AND LOAD DATA  >>>" % self.fullPath, "ii")
-            df.to_csv(self.cName , header=False, index=index, encoding=config.FILE_ENCODING, quoting=csv.QUOTE_NONNUMERIC,  quotechar = self.fileDelimiter)
-
-    def dfFromTable(self,srcColumns=None,tarColumn=None, index_col=None):
-        p("file->dfFromTable: loading from file: %s into dataframe >>>" %self.fullPath, "ii")
-        if self.fileHeader:
-            df = pd.read_csv(filepath_or_buffer=self.fullPath, sep=self.fileDelimiter, encoding=config.FILE_DECODING, keep_default_na=False,
-                             index_col=index_col, na_values=config.DATA_TYPE['null'][self.cType])  # , encoding="utf8" names=columns,
-
-        else:
-            df = pd.read_csv(filepath_or_buffer=self.fullPath, sep=self.fileDelimiter, encoding=config.FILE_DECODING, header=None, keep_default_na=False,
-                             index_col=index_col, na_values=config.DATA_TYPE['null'][self.cType])  # , encoding="utf8" names=columns,
-
-        if srcColumns:
-            dfColumn = df.columns
-            for i,col in enumerate (tarColumn):
-                if srcColumns[i] in dfColumn:
-                    df.rename(columns={srcColumns[i]: col}, inplace=True)
+            if isinstance( colList, list) and len (colList)>0:
+                columnsList = colList
+            else:
+                if isinstance( colList, (dict, collections.OrderedDict) ):
+                    columnsList = colList.items()
                 else:
-                    df.insert (i , col, '')
+                    p ("file->setColumns: List of column is not ordered dictioany or list or regualr dictioanry ....","e")
+                    return None
 
-        return df.values.tolist()
+        for col in columnsList:
+            if (isinstance (col, (tuple, list))):
+                colName = col[0]
+            else:
+                colName = col
+            ret.append(colName)
+        self.columns = ret
+
+        p("file-> setColumns: type: %s, file %s will be set with column: %s" % (self.cType, self.cName, str(self.columns)), "ii")
+        return self.columns
 
     def __cloneObject(self, fullPath=None):
         fullPath = fullPath if fullPath else self.fullPath
@@ -311,3 +304,21 @@ class cnFile ():
                 p ("file-> __cloneObject: File History is OFF, and file %s exists, DELETE FILE >>>> " %(str (self.cName)  ), "ii")
             else:
                 p ("file-> __cloneObject: File History is OFF, and file %s is not exists, continue >>>> " %(str (self.cName)  ), "ii")
+
+    def __checkColumn (self, srcVsTar, results, dstObj, maxRows=None, numOfCol=None):
+        rrRan = [numOfCol] if numOfCol else range(1, len (srcVsTar))
+
+        if results and len(results)>0:
+            totalCol = len (results[0])
+            for cntCol in rrRan:
+                if cntCol<=totalCol:
+                    dstObj.truncate()
+                    nres = []
+                    nCol = srcVsTar[:cntCol]
+                    for i, rr in enumerate (results):
+                        if maxRows and i>maxRows:
+                            break
+                        nres.append( rr[:cntCol] )
+
+                    p ("__checkColumn:check %s out of %s columns" %(str(cntCol), str(totalCol)))
+                    dstObj.loadData(nCol, nres, len(nres), cntCol)

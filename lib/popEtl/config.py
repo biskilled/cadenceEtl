@@ -36,13 +36,15 @@ class config:
 
     # Sql table configurations
     TABLE_HISTORY       = True
-    FILE_MIN_SIZE       = 1024
-    FILE_DEF_COLUMN_PREF= 'col_'
+
     RESULT_ARRAY_SIZE   = 200000
     #INSERT_CHUNK_SIZE   = 200
     TO_TRUNCATE         = True
     RESULT_LOOP_ON_ERROR= True
+
     # file configuration unicode
+    FILE_MIN_SIZE       = 1024
+    FILE_DEF_COLUMN_PREF= 'col_'
     FILE_DECODING       = "windows-1255"
     FILE_ENCODING       = "utf8"
     FILE_DEFAULT_DELIMITER = ","
