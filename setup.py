@@ -75,7 +75,7 @@ static_setup_params = dict(
     package_dir    = {'': 'lib'},
     packages       = find_packages('lib'),
     package_data   ={
-        '': [ ],
+        '': [ 'dll/*.*' ],
     },
 
     classifiers=[
