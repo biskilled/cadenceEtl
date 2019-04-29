@@ -316,6 +316,7 @@ class cnDb (object):
         return
 
     def transferToTarget(self, dstObj, srcVsTar, fnDic, pp):
+
         srcSql = self.__dbMapSrcVsTarget(srcSql=self.cSQL, srcVsTar=srcVsTar)
         try:
             self.__executeSQL(str(srcSql), commit=False)
@@ -334,13 +335,7 @@ class cnDb (object):
         if not srcVsTar or len(srcVsTar)==0:
             return srcSql
 
-        stcSelect = srcSql.lower().replace("\n", " ").find("select ")
-        stcFrom   = srcSql.lower().replace("\n", " ").find(" from ")
-
-        if stcSelect > -1 and stcFrom > 0:
-            preSrcSql = srcSql[:stcSelect + 7]
-            postSrcSql= srcSql[stcFrom:]
-            newCol    = ""
+        if self.cColoumnAs:
             for tup in srcVsTar:
                 if self.cIsSql:
                     srcC = tup[0]
@@ -348,11 +343,9 @@ class cnDb (object):
                     srcC = self.__wrapSql(col=tup[0], remove=False) if tup[0] != "''" else tup[0]
 
                 srcT = self.__wrapSql(col=tup[1], remove=False)
-                newCol += srcC + " AS " + srcT + "," if self.cColoumnAs else srcC + ","
+                if self.cColoumnAs:
+                    srcSql.replace (srcC, '%s AS %s' %(srcC,srcT))
 
-            newCol = newCol[:-1]
-            srcSql = preSrcSql + newCol + postSrcSql
-            #p("db->__dbMapSrcVsTarget: there is mapping, update to new sql query: %s " % (srcSql), "ii")
         return srcSql
 
     def __parallelProcessing (self, dstObj, srcVsTar, fnDic, pp, cntColumn=None):
