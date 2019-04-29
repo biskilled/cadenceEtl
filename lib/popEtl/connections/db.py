@@ -330,12 +330,20 @@ class cnDb (object):
             p("db->transferToTarget: ERROR Exectuging query: %s, type: %s >>>>>>" % (srcSql, self.cType) , "e")
             p(str(e), "e")
 
-    def __dbMapSrcVsTarget ( self,srcSql, srcVsTar ):
+    def __dbMapSrcVsTarget(self, srcSql, srcVsTar):
+
         # there is column mapping or function mapping
-        if not srcVsTar or len(srcVsTar)==0:
+        if not srcVsTar or len(srcVsTar) == 0:
             return srcSql
 
-        if self.cColoumnAs:
+        #stcSelect = srcSql.lower().replace("\n", " ").find("select ")
+        preSrcSql = queryParser.extract_only_select(srcSql)
+        stcFrom   = srcSql.lower().replace("\n", " ").find(" from ")
+
+        if preSrcSql > 0 and stcFrom > 0:
+            # preSrcSql = srcSql[:stcSelect + 7]
+            postSrcSql = srcSql[stcFrom:]
+            newCol = ""
             for tup in srcVsTar:
                 if self.cIsSql:
                     srcC = tup[0]
@@ -343,9 +351,11 @@ class cnDb (object):
                     srcC = self.__wrapSql(col=tup[0], remove=False) if tup[0] != "''" else tup[0]
 
                 srcT = self.__wrapSql(col=tup[1], remove=False)
-                if self.cColoumnAs:
-                    srcSql.replace (srcC, '%s AS %s' %(srcC,srcT))
+                newCol += srcC + " AS " + srcT + "," if self.cColoumnAs else srcC + ","
 
+            newCol = newCol[:-1]
+            srcSql = preSrcSql + newCol + postSrcSql
+            # p("db->__dbMapSrcVsTarget: there is mapping, update to new sql query: %s " % (srcSql), "ii")
         return srcSql
 
     def __parallelProcessing (self, dstObj, srcVsTar, fnDic, pp, cntColumn=None):

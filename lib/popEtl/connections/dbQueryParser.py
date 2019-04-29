@@ -182,3 +182,17 @@ def extract_tableAndColumns (sql):
                 ret[tableName]['column'].extend (columns[col])
 
     return ret
+
+def extract_only_select (sql):
+    parsed = sqlparse.parse(sql)[0]
+    preSql = ""
+    addToken = False
+    for token in parsed.tokens:
+        if token.ttype is DML and token.value.upper() == 'SELECT':
+            addToken = True
+        elif isinstance(token, IdentifierList) or isinstance(token, Identifier) or '*' in token.value:
+            break
+
+        if addToken:
+            preSql += token.value
+    return preSql
