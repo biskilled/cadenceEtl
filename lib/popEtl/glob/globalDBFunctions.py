@@ -143,6 +143,13 @@ def OLAP_Process(serverName,dbName, cubes=[], dims=[], fullProcess=True):
                 p(u"gFunc->OLAP_Process, OLAP DB: %s, ERROR processing CUBE %s ... " % (unicode(dbName),unicode(str(cube).decode('windows-1255'))),"e")
                 p(e,"e")
 
+def testConnection():
+    for c in config.CONN_URL:
+        con = connector(connName=c, connJsonVal=config.CONN_URL[c])
+        con.test()
+        con.close()
+
+
 #### GENERAL FUNCTIONS #####################################################
 
 #### Private function  #####################################################

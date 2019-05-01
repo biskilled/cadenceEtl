@@ -169,7 +169,7 @@ def functionResultMapping (results,fnDic, header=None):
 
 class validation (object):
     def __init__ (self):
-        pass
+        self.cnt=1
 
     @property
     def CON_DIR_DATA(self):
@@ -197,8 +197,12 @@ class validation (object):
                     else:
                         err = "%s:, %s is not legal Conn type !" %(str(v),str(val[v]))
                         raise ValueError(err)
-            for v in val:
-                config.CONN_URL[v] = val[v]
+            if self.cnt == 1:
+                config.CONN_URL = val
+                self.cnt+=1
+            else:
+                for v in val:
+                    config.CONN_URL[v] = val[v]
         else:
             raise ValueError("Value must be dicionary !")
 

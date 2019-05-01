@@ -38,7 +38,7 @@ class cnFile ():
         self.cType= connDic[eConnValues.connType] if connDic else connType if connType else eDbType.FILE
         self.cName= connDic[eConnValues.connObj]  if connDic else connName if connName else self.cType
         self.cUrl = connDic[eConnValues.connUrl]  if connDic else connUrl
-        self.cObj = connDic[eConnValues.connObj]  if connDic else connObj
+        self.cObj = connDic[eConnValues.connObj]  if connDic else connObj if connObj else None
         self.cursor     = None
         self.conn       = None
         self.cColumns   = None
@@ -51,26 +51,31 @@ class cnFile ():
         self.fileDelimiter  = self.cUrl[eConnValues.fileDelimiter] if eConnValues.fileDelimiter in connProp else config.FILE_DEFAULT_DELIMITER
         self.fileHeader     = self.cUrl[eConnValues.fileHeader] if eConnValues.fileHeader in connProp       else config.FILE_DEFAULT_HEADER
         self.folderPath     = self.cUrl[eConnValues.fileFolder] if eConnValues.fileFolder in connProp       else config.FILE_DEFAULT_FOLDER
-        self.fullPath       = os.path.join(self.folderPath, self.cName)
+        self.fullPath       = os.path.join(self.folderPath, self.cObj) if self.cObj else None
         self.newLine        = self.folderPath[eConnValues.fileNewLine]  if eConnValues.fileNewLine in connProp  else config.FILE_DEFAULT_NEWLINE
         self.encoding       = self.folderPath[eConnValues.fileEncoding] if eConnValues.fileEncoding in connProp else config.FILE_DECODING
         self.errors         = self.folderPath[eConnValues.fileErrors]   if eConnValues.fileErrors in connProp   else config.FILE_LOAD_WITH_CHAR_ERR
 
-        head, tail = os.path.split (self.cObj)
-        if head and len(head)>1 and tail and len (tail)>1:
-            self.fullPath = self.cObj
-        else:
-            self.fullPath = os.path.join(self.folderPath, self.cObj)
-        if (os.path.isfile(self.fullPath)):
-            p ("file-> INIT: %s, Delimiter %s, Header %s " %(str(self.fullPath) , str(self.fileDelimiter) ,str(self.fileHeader) ), "ii")
+        if self.cObj:
+            head, tail = os.path.split (self.cObj)
+            if head and len(head)>1 and tail and len (tail)>1:
+                self.fullPath = self.cObj
+            else:
+                self.fullPath = os.path.join(self.folderPath, self.cObj)
+            if (os.path.isfile(self.fullPath)):
+                p ("file-> INIT: %s, Delimiter %s, Header %s " %(str(self.fullPath) , str(self.fileDelimiter) ,str(self.fileHeader) ), "ii")
 
     def connect( self, fileName=None):
         if fileName:
             self.fullPath = fileName
             return True
         elif not self.fullPath:
-            err = u"File path is valid: %s " %(decodeStrPython2Or3(self.fullPath))
-            raise ValueError(err)
+            if self.folderPath and os.path.isdir(self.folderPath):
+                p("Connected to folder %s" %self.folderPath)
+                return True
+            else:
+                err = u"File path is valid: %s " %(decodeStrPython2Or3(self.fullPath))
+                raise ValueError(err)
 
     def close (self):
         pass

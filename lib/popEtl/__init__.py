@@ -19,11 +19,12 @@ from popEtl.loader.loader import trasnfer           as Transfer
 from popEtl.mapp.mapper import model                as Model
 from popEtl.loader.loadExecSP import execQuery      as ExecQuery
 from popEtl.connections.connector import connector  as Connector
-from popEtl.glob.logsManager import manageTime
+from popEtl.glob.globalDBFunctions import testConnection as TEST
+from popEtl.glob.logsManager import manageTime      as __manage
 from popEtl.glob.glob import logger                 as __logger
 from popEtl.glob.glob import validation             as __validation
 from popEtl.glob.globalDBFunctions import OLAP_Process as OLAP
 
 CONFIG = __validation()
-MANGE_LOGS = manageTime(loggObj=__logger, timeFormat="%m/%d/%Y %H:%M:%S", sDesc="state_")
+MANGE_LOGS = __manage(loggObj=__logger, timeFormat="%m/%d/%Y %H:%M:%S", sDesc="state_")
 

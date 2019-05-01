@@ -59,9 +59,10 @@ class connector ():
             return
 
     def connect (self):
-        self.objClass.connect()
+        ret = self.objClass.connect()
         self.cursor = self.objClass.cursor
         self.conn = self.objClass.conn
+        return ret
 
     def close (self):
         #p ("CONNECTOR->close: CLOSING CONNECTION type:%s, name: %s " %(self.cType, self.cName) ,"ii")
@@ -171,16 +172,16 @@ class connector ():
 
     def test (self):
         if self.connect():
-            p("SUCCESS: %s, type: %s " %(self.cName, self.cType) )
+            p("TEST-> SUCCESS: %s, type: %s " %(self.cName, self.cType) )
         else:
-            p("FAILED: %s, type: %s " % (self.cName, self.cType))
+            p("TEST-> FAILED: %s, type: %s " % (self.cName, self.cType))
 
     def _setDicConnValue(self,  connJsonVal=None, connType=None, connName=None,connObj=None, connFilter=None, connUrl=None,
                                 extraConnVal=None, fileToLoad=None,isSql=False, isTarget=False, isSource=False):
 
 
         retVal={
-                eConnValues.connType: connType.lower() if connType else None,
+                eConnValues.connType: connType.lower() if connType else connName.lower() if connName else None,
                 eConnValues.connName: connName if connName else connType,
                 eConnValues.connUrl: connUrl,
                 eConnValues.connUrlExParams: extraConnVal,
@@ -203,12 +204,12 @@ class connector ():
                 if len(connJsonVal) == 3:
                     retVal[eConnValues.connFilter] = connJsonVal[2]
             else:
-                err = "glob->_setDicConnValue: Connection paramter is not valid, must have 1,2 or 3 params: %s " % (str(connJsonVal))
+                err = "connector->_setDicConnValue: Connection paramter is not valid, must have 1,2 or 3 params: %s " % (str(connJsonVal))
                 p(err, "e")
                 raise Exception(err)
 
         if retVal[eConnValues.connName] is None:
-            err = "glob->_setDicConnValue: Connection Name is not defined: %s " % (connJsonVal)
+            err = "connector->_setDicConnValue: Connection Name is not defined: %s " % (connJsonVal)
             p(err, "e")
             raise Exception(err)
 
@@ -224,7 +225,7 @@ class connector ():
                     if eConnValues.fileToLoad in connUrl:
                         retVal[eConnValues.fileToLoad] = connUrl[eConnValues.fileToLoad]
             else:
-                err = "glob->_setDicConnValue: Connection Name %s is not defined in CONN_URL config. define names are : %s  " % (
+                err = "connector->_setDicConnValue: Connection Name %s is not defined in CONN_URL config. define names are : %s  " % (
                 retVal[eConnValues.connName], str(list(config.CONN_URL.keys())))
                 p(err, "e")
                 raise Exception(err)
@@ -239,7 +240,7 @@ class connector ():
                             retVal[eConnValues.connUrl][1] + str(
                         retVal[eConnValues.connUrlExParams].split(".")[0] + ".accdb"))
             else:
-                err = "glob->_setDicConnValue: Connection %s is missing Access file " % (
+                err = "connector->_setDicConnValue: Connection %s is missing Access file " % (
                 retVal[eConnValues.connName])
                 p(err, "e")
                 raise Exception(err)
@@ -256,6 +257,7 @@ class connector ():
                     allQueries = self._queryParsetIntoList(sqlScript, getPython=True, removeContent=True, dicProp=None,
                                                      pythonWord=config.PARSER_SQL_MAIN_KEY)
 
+
                     for q in allQueries:
                         allParams.append(q[1])
                         if q[0] and q[0] == retVal[eConnValues.connObj]:
@@ -263,13 +265,13 @@ class connector ():
                             retVal[eConnValues.connIsSql] = True
                             foundQuery = True
                             break
-                if not foundQuery:
-                    err = "glob->_setDicConnValue: There is paramter %s which is not found in %s, existing keys: %s " % (
+                if not foundQuery and retVal[eConnValues.connObj] is not None:
+                    err = "connector->_setDicConnValue: There is paramter %s which is not found in %s, existing keys: %s " % (
                     retVal[eConnValues.connObj], sqlFile, str(allParams))
                     p(err, "e")
                     raise Exception(err)
             else:
-                err = "glob->_setDicConnValue: %s is not found  " % (sqlFile)
+                err = "connector->_setDicConnValue: %s is not found  " % (sqlFile)
                 p(err, "e")
                 raise Exception(err)
 
@@ -278,10 +280,11 @@ class connector ():
         if retVal[eConnValues.connName] is not None and \
                 retVal[eConnValues.connType] is not None and \
                 retVal[eConnValues.connUrl] is not None:
-            p("glob->_setDicConnValue: Connection params: %s " % (str(retVal)), "ii")
+            p("connector->_setDicConnValue: Connection params: %s " % (str(retVal)), "ii")
             return retVal
         else:
-            err = "glob->_setDicConnValue: Connection params are not set: %s " % (str(retVal))
+            err = "connector->_setDicConnValue: Connection params are not set: %s " % (str(retVal))
+            err +="\nMust have name: %s, type: %s, url: %s " %(str(retVal[eConnValues.connName]) , str(retVal[eConnValues.connType]), str(retVal[eConnValues.connUrl]))
             p(err, "e")
             raise Exception(err)
 
