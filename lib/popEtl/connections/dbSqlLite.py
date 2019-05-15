@@ -20,7 +20,6 @@ __metaclass__ = type
 
 import os
 import sqlite3
-
 from popEtl.glob.glob import p
 
 class sqlLite ():

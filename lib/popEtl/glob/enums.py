@@ -21,6 +21,7 @@ class eDbType (object):
     VERTIVA = "vertica"
     ACCESS  = "access"
     MYSQL   = "mysql"
+    LITE    = "sqlite"
     FILE    = "file"
 
 def isDbType (prop):

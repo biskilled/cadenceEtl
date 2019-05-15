@@ -36,7 +36,7 @@ from popEtl.glob.enums      import eConnValues, eDbType
 class cnFile ():
     def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connObj=None, fileHeader=[]):
         self.cType= connDic[eConnValues.connType] if connDic else connType if connType else eDbType.FILE
-        self.cName= connDic[eConnValues.connObj]  if connDic else connName if connName else self.cType
+        self.cName= connDic[eConnValues.connName]  if connDic else connName if connName else self.cType
         self.cUrl = connDic[eConnValues.connUrl]  if connDic else connUrl
         self.cObj = connDic[eConnValues.connObj]  if connDic else connObj if connObj else None
         self.cursor     = None
@@ -46,7 +46,7 @@ class cnFile ():
         self.fileHeader = fileHeader
 
         fileDicDef = self.cUrl if isinstance(self.cUrl, (dict, OrderedDict)) else {}
-        connProp = [x.lower() for x in self.cUrl.keys()]
+        connProp = [x.lower() for x in self.cUrl.keys()] if (isinstance(self.cUrl, dict)) else {}
 
         self.fileDelimiter  = self.cUrl[eConnValues.fileDelimiter] if eConnValues.fileDelimiter in connProp else config.FILE_DEFAULT_DELIMITER
         self.fileHeader     = self.cUrl[eConnValues.fileHeader] if eConnValues.fileHeader in connProp       else config.FILE_DEFAULT_HEADER
@@ -58,12 +58,18 @@ class cnFile ():
 
         if self.cObj:
             head, tail = os.path.split (self.cObj)
-            if head and len(head)>1 and tail and len (tail)>1:
+            if head and len(head)>0 and tail and len (tail)>1:
                 self.fullPath = self.cObj
+                self.folderPath = head
             else:
                 self.fullPath = os.path.join(self.folderPath, self.cObj)
             if (os.path.isfile(self.fullPath)):
                 p ("file-> INIT: %s, Delimiter %s, Header %s " %(str(self.fullPath) , str(self.fileDelimiter) ,str(self.fileHeader) ), "ii")
+        elif self.cUrl:
+            head, tail = os.path.split(self.cUrl)
+            if head and len(head)>0 and tail and len (tail)>1:
+                self.folderPath = head
+                self.fullPath = self.cUrl
 
     def connect( self, fileName=None):
         if fileName:
@@ -76,6 +82,8 @@ class cnFile ():
             else:
                 err = u"File path is valid: %s " %(decodeStrPython2Or3(self.fullPath))
                 raise ValueError(err)
+        return True
+
 
     def close (self):
         pass

@@ -17,6 +17,7 @@
 # along with cadenceEtl.  If not, see <http://www.gnu.org/licenses/>.
 
 import time
+import importlib
 import sys
 import os
 import traceback
@@ -31,7 +32,6 @@ from popEtl.glob.enums import eDbType, eConnValues, isDbType
 import popEtl.connections.dbQueries as queries
 import popEtl.connections.dbQueryParser as queryParser
 
-# Data sources
 try:
     import ceODBC as odbc
 except ImportError:
@@ -40,23 +40,6 @@ except ImportError:
         import pyodbc as odbc
     except ImportError:
         p("pyobbc is not installed", "ii")
-
-try:
-    import pymysql as pymysql
-except ImportError:
-    p("pymysql is not installed", "ii")
-
-try:
-    import vertica_python
-    # pip install vertica_python
-    # Need to install pip install sqlalchemy-vertica-python as well !!!
-except ImportError:
-    p("vertica_python is not installed", "ii")
-
-try:
-    import cx_Oracle  # version : 6.1
-except ImportError:
-    p("cx_Oracle is not installed", "ii")
 
 class cnDb (object):
     def __init__ (self, connDic=None, connType=None, connName=None, connUrl=None, connObj=None, connFilter=None):
@@ -108,27 +91,40 @@ class cnDb (object):
     def connect (self):
         try:
             if eDbType.MYSQL == self.cType:
+                import pymysql
                 self.conn = pymysql.connect(self.cUrl["host"], self.cUrl["user"], self.cUrl["passwd"], self.cUrl["db"])
                 self.cursor = self.conn.cursor()
             elif eDbType.VERTIVA == self.cType:
+                import vertica_python
                 self.conn = vertica_python.connect(self.cUrl)
                 self.cursor = self.conn.cursor()
             elif eDbType.ORACLE == self.cType:
+                import cx_Oracle
                 self.conn = cx_Oracle.connect(self.cUrl['user'], self.cUrl['pass'], self.cUrl['dsn'])
                 if 'nls' in self.cUrl:
                     os.environ["NLS_LANG"] = self.cUrl['nls']
                 self.cursor = self.conn.cursor()
             elif eDbType.ACCESS == self.cType:
+                import pyodbc as odbc
                 self.conn       = odbc.connect (self.cUrl) # , ansi=True
                 self.cursor     = self.conn.cursor()
                 self.cColoumnAs = False
+            elif eDbType.LITE == self.cType:
+                import sqlite3 as sqlite
+                self.conn = sqlite.connect(self.cUrl)  # , ansi=True
+                self.cursor = self.conn.cursor()
             else:
+
                 self.conn = odbc.connect (self.cUrl) #ansi=True
                 self.cursor = self.conn.cursor()
             return True
+
+        except ImportError:
+            p("%s is not installed" %(self.cType), "e")
         except Exception as e:
             err = "Error connecting into DB: %s, ERROR: %s " %(self.cType, str(e))
             raise ValueError(err)
+
 
     def close(self):
         try:

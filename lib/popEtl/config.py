@@ -24,7 +24,7 @@ from popEtl.glob.enums import eDbType
 
 class config:
     #########################   Feild per model ##############################################
-    CONNECTIONS_ACTIVE      = {eDbType.SQL: "cnDb", eDbType.ORACLE: "cnDb", eDbType.MYSQL: "cnDb", eDbType.VERTIVA: "cnDb", eDbType.FILE: "cnFile"}
+    CONNECTIONS_ACTIVE      = {eDbType.SQL: "cnDb", eDbType.ORACLE: "cnDb", eDbType.MYSQL: "cnDb", eDbType.VERTIVA: "cnDb", eDbType.LITE: "cnDb", eDbType.FILE: "cnFile"}
 
     DIR_DATA    = ""
     CONN_URL    =  {    'sql'    :"DRIVER={SQL Server};SERVER=server,1433;DATABASE=database;UID=uid;PWD=pass;",
@@ -76,23 +76,23 @@ class config:
     NUM_OF_LOADING_THREAD   = 1
 
     DATA_TYPE = \
-    {'varchar'  :{'sql':'varchar',                      'oracle':('varchar','varchar2'),'mysql':'varchar',      'vertica':'varchar', },
-     'v'        :{'sql':'varchar',                      'oracle':('varchar','varchar2'),'mysql':'varchar',      'vertica':'varchar'},
-     'nv'       :{'sql':'nvarchar',                     'oracle':'nvarchar2',           'mysql':'nvarchar',     'vertica':'varchar'},
-     'nvarchar' :{'sql': 'nvarchar',                    'oracle':'nvarchar2',           'mysql':'nvarchar',     'vertica':'varchar', 'access':'text'},
-     'dt'       :{'sql':('smalldatetime','datetime'),   'oracle':('date','datetime'),   'mysql':'datetime',     'vertica':'timestamp'},
-     'bint'     :{'sql':('bigint'),                     'oracle':'number(19)'},
-     'int'      :{'sql':'int',                          'oracle':('int','float'),       'mysql':('int')},
-     'tinyint'  :{'sql':'int',                          'oracle':'smallint',            'mysql':('tinyint')},
-     'i'        :{'sql':'int'},
-     'numeric'  :{'sql':'numeric',                      'oracle':'number'},
-     'decimal'  :{'sql':'decimal',                      'oracle':'decimal',                                                      'mysql':'decimal'},
-     'cblob'    :{'sql': 'nvarchar(MAX)',               'oracle': 'clob'    },
-     'default'  :{'sql':'varchar(100)',                 'oracle':'nvarchar(100)',                                                   'file':'varchar(100)'},
-     'schema'   :{'sql':'dbo',                          'oracle':None,                                                                  'access':'text'},
-     'null'     :{'sql':'NULL',                         'oracle':'NULL',                                                            'file':'NULL'},
+    {'varchar'  :{'sql':'varchar',                      'oracle':('varchar','varchar2'),'mysql':'varchar',      'vertica':'varchar',"sqlite":'varchar' },
+     'v'        :{'sql':'varchar',                      'oracle':('varchar','varchar2'),'mysql':'varchar',      'vertica':'varchar',"sqlite":'varchar'},
+     'nv'       :{'sql':'nvarchar',                     'oracle':'nvarchar2',           'mysql':'nvarchar',     'vertica':'varchar',"sqlite":'varchar'},
+     'nvarchar' :{'sql': 'nvarchar',                    'oracle':'nvarchar2',           'mysql':'nvarchar',     'vertica':'varchar', 'access':'text',"sqlite":'varchar'},
+     'dt'       :{'sql':('smalldatetime','datetime'),   'oracle':('date','datetime'),   'mysql':'datetime',     'vertica':'timestamp',"sqlite":'varchar'},
+     'bint'     :{'sql':('bigint'),                     'oracle':'number(19)',"sqlite":'int'},
+     'int'      :{'sql':'int',                          'oracle':('int','float'),       'mysql':('int'),"sqlite":'int'},
+     'tinyint'  :{'sql':'int',                          'oracle':'smallint',            'mysql':('tinyint'),"sqlite":'int'},
+     'i'        :{'sql':'int',"sqlite":'int'},
+     'numeric'  :{'sql':'numeric',                      'oracle':'number',"sqlite":'float'},
+     'decimal'  :{'sql':'decimal',                      'oracle':'decimal',                                                      'mysql':'decimal',"sqlite":'decinal'},
+     'cblob'    :{'sql': 'nvarchar(MAX)',               'oracle': 'clob',"sqlite":'nvarchar(MAX)'    },
+     'default'  :{'sql':'varchar(100)',                 'oracle':'nvarchar(100)',                                                   'file':'varchar(100)',"sqlite":'varchar(100)'},
+     'schema'   :{'sql':'dbo',                          'oracle':None,                                                                  'access':'text',"sqlite":'dbo'},
+     'null'     :{'sql':'NULL',                         'oracle':'NULL',                                                            'file':'NULL',"sqlite":'NULL'},
      'sp'       :{'sql':{'match':r'([@].*[=])(.*?(;|$))', 'replace':r"[=;@\s']"}},
-     'colFrame' :{'sql':("[","]"), 'oracle':("\"","\""), 'access':("[","]"), 'file':('','')}
+     'colFrame' :{'sql':("[","]"), 'oracle':("\"","\""), 'access':("[","]"), 'file':('',''), "sqlite":("[","]")}
     }
 
     PARSER_SQL_MAIN_KEY = "popEtl"
